@@ -10,7 +10,10 @@ Every question, answer, revision, verification and contributor is a durable,
 addressable object — reachable from a browser, a REST API, an MCP server, a CLI,
 RSS, Markdown and JSON-LD.
 
-> Status: **pre-implementation.** The product spec lands first; code follows.
+> Status: **early scaffold, deployed.** The spec is complete; the skeleton boots
+> and serves. Almost none of the product exists yet.
+
+**Live:** <https://bufferoverride-production.up.railway.app>
 
 ## Why
 
@@ -40,11 +43,33 @@ BufferOverride's answers to those:
 
 ## Shape
 
-One repository, one Railway service. The web app, the API, the MCP server, the
-media service and the background daemons run as supervised processes inside a
-single container against a single Turso database. See
+One repository, one Railway service. The web app, the API, the media service and
+the background daemons run as supervised processes inside a single container
+against a single Turso database. See
 [`docs/architecture/deployment.md`](docs/architecture/deployment.md) for the
 topology and its trade-offs.
+
+```text
+apps/gateway   supervises the daemons, reverse-proxies them on one port,
+               and runs migrations before anything serves
+apps/web       Next.js App Router, server-rendered public pages
+apps/api       Hono — REST today, MCP next
+apps/media     volume-backed uploads and delivery
+apps/worker    indexing, counters, scheduled maintenance
+packages/db    libSQL client, forward-only migrations, schema
+```
+
+## Running it
+
+```sh
+pnpm install
+cp .env.example .env          # fill in TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
+pnpm --filter @bufferoverride/web build
+pnpm start                    # gateway on :3000, daemons behind it
+```
+
+`GET /health` reports every daemon and whether the container is servable. A
+non-essential daemon may be down without the service being unhealthy.
 
 ## Interfaces
 
