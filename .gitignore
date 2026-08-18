@@ -23,3 +23,5 @@ Thumbs.db
 # Next 16's dev server drops these into the app dir, untracked and un-ignored
 apps/*/AGENTS.md
 apps/*/CLAUDE.md
+
+.data/

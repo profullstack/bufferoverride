@@ -1,0 +1,8 @@
+{
+  "name": "@bufferoverride/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@libsql/client": "^0.15.15" }
+}

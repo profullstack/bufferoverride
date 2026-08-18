@@ -1,0 +1,94 @@
+/*
+ * Semantic tokens. Light is defined on bare :root so a page always has a
+ * complete palette; dark redefines only what changes, in both the media-query
+ * and explicit-attribute forms so a toggle wins in either direction.
+ */
+:root {
+  --surface-canvas: #fbfbfa;
+  --surface-panel: #ffffff;
+  --surface-raised: #f4f4f2;
+  --text-primary: #14161a;
+  --text-secondary: #5b6169;
+  --border-default: #e2e3e0;
+  --accent-primary: #0b6bcb;
+  --status-verified: #197a4b;
+  --status-stale: #9a6700;
+  --code-surface: #f4f4f2;
+  --focus-ring: #0b6bcb;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --space-page: 1.5rem;
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-canvas: #0e1013;
+    --surface-panel: #16191d;
+    --surface-raised: #1d2126;
+    --text-primary: #e8eaed;
+    --text-secondary: #9aa2ac;
+    --border-default: #2a2f36;
+    --accent-primary: #5fa8f5;
+    --status-verified: #4cc38a;
+    --status-stale: #d9a441;
+    --code-surface: #1d2126;
+    --focus-ring: #5fa8f5;
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface-canvas: #0e1013;
+  --surface-panel: #16191d;
+  --surface-raised: #1d2126;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa2ac;
+  --border-default: #2a2f36;
+  --accent-primary: #5fa8f5;
+  --status-verified: #4cc38a;
+  --status-stale: #d9a441;
+  --code-surface: #1d2126;
+  --focus-ring: #5fa8f5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  line-height: 1.6;
+}
+
+a { color: var(--accent-primary); }
+
+code, pre { font-family: var(--font-mono); background: var(--code-surface); }
+
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.wrap { max-width: 68rem; margin: 0 auto; padding: var(--space-page); }
+
+.masthead {
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-panel);
+}
+
+.masthead .wrap { display: flex; align-items: baseline; gap: 1rem; padding-block: 1rem; }
+
+.brand { font-weight: 700; font-size: 1.125rem; text-decoration: none; color: var(--text-primary); }
+
+.tagline { color: var(--text-secondary); font-size: 0.875rem; }
+
+.card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.meta { color: var(--text-secondary); font-size: 0.8125rem; }
+
+.empty { color: var(--text-secondary); }
