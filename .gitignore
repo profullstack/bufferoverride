@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+
+.env
+.env.*
+!.env.example
+
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+.DS_Store
+Thumbs.db
+
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# Next 16's dev server drops these into the app dir, untracked and un-ignored
+apps/*/AGENTS.md
+apps/*/CLAUDE.md
