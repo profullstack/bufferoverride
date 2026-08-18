@@ -28,13 +28,20 @@ async function tick(): Promise<void> {
        where question_count <> (
          select count(*) from question_tags where question_tags.tag_id = tags.id
        )`,
+      // Only INDEPENDENT passes count. A verification by the answer's own owner
+      // is kept and displayed, but it is not evidence that the answer works for
+      // anyone else, so it must never inflate this number.
       `update answers set verified_count = (
          select count(*) from verifications
-         where verifications.answer_id = answers.id and verifications.result = 'pass'
+         where verifications.answer_id = answers.id
+           and verifications.result = 'pass'
+           and verifications.is_independent = 1
        )
        where verified_count <> (
          select count(*) from verifications
-         where verifications.answer_id = answers.id and verifications.result = 'pass'
+         where verifications.answer_id = answers.id
+           and verifications.result = 'pass'
+           and verifications.is_independent = 1
        )`,
     ],
     'write',
