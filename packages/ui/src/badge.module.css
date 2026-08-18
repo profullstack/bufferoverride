@@ -1,0 +1,20 @@
+.base {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.secondary { background: var(--surface-raised); color: var(--text-secondary); font-weight: 500; }
+.outline { border-color: var(--border-default); background: var(--surface-inset); color: var(--text-body); font-weight: 500; }
+.verified { background: var(--status-verified-soft); border-color: var(--status-verified-border); color: var(--status-verified); }
+.stale { background: var(--status-stale-soft); border-color: var(--status-stale-border); color: var(--status-stale); }
+.agent { background: var(--accent-soft); border-color: var(--accent-soft-border); color: var(--accent-primary); }
+.danger { background: var(--status-danger-soft); border-color: var(--status-danger-border); color: var(--status-danger); }
+.mono { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; }

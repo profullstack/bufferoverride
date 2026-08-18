@@ -1,0 +1,178 @@
+.hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+  align-items: center;
+  padding: 56px 0;
+}
+
+@media (min-width: 1000px) {
+  .hero { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; padding: 80px 0 68px; }
+}
+
+.heroCopy { display: flex; flex-direction: column; gap: 22px; }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-panel);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-verified); }
+
+.h1 { font-size: 38px; line-height: 1.06; letter-spacing: -0.033em; font-weight: 700; }
+
+@media (min-width: 700px) { .h1 { font-size: 48px; } }
+@media (min-width: 1000px) { .h1 { font-size: 56px; } }
+
+.lede { font-size: 17px; line-height: 1.6; color: var(--text-secondary); max-width: 31em; }
+@media (min-width: 700px) { .lede { font-size: 18px; } }
+
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-top: 2px; }
+
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.sep { color: var(--border-strong); }
+
+/* Terminal keeps its own dark surface in both themes: it is a depiction of a
+   terminal, not a themed panel. */
+.terminal {
+  border: 1px solid #27272a;
+  border-radius: var(--radius-panel);
+  background: #09090b;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(9, 9, 11, 0.12);
+}
+
+.terminalBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #27272a;
+}
+
+.tdot { width: 9px; height: 9px; border-radius: 50%; background: #3f3f46; }
+.tname { margin-left: 6px; font-family: var(--font-mono); font-size: 11.5px; color: #71717a; }
+
+.terminalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px 24px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+@media (min-width: 700px) { .terminalBody { font-size: 13px; } }
+
+.tin { color: #fafafa; }
+.tprompt { color: #34d399; }
+.tdim { color: #71717a; }
+
+.thit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0;
+  padding: 13px 14px;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  background: #111113;
+}
+
+.thitTags { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; }
+.ttag { padding: 2px 7px; border: 1px solid #27272a; border-radius: 4px; background: #1c1c1f; color: #a1a1aa; }
+.ttagOk { padding: 2px 7px; border: 1px solid #14432e; border-radius: 4px; background: #0c2c1e; color: #34d399; }
+
+.section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  padding: 56px 0;
+  border-top: 1px solid var(--border-default);
+}
+
+@media (min-width: 1000px) {
+  .section { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; padding: 72px 0; }
+}
+
+.sectionAlt { background: var(--surface-inset); }
+.sectionCopy { display: flex; flex-direction: column; gap: 16px; }
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.h2 { font-size: 28px; line-height: 1.14; letter-spacing: -0.026em; font-weight: 700; }
+@media (min-width: 700px) { .h2 { font-size: 34px; } }
+
+.body { font-size: 16px; line-height: 1.62; color: var(--text-secondary); max-width: 32em; }
+
+.evidence { display: flex; flex-direction: column; gap: 9px; }
+.evidenceRow { display: flex; gap: 12px; font-size: 13.5px; color: var(--text-body); }
+.evidenceTag { flex-shrink: 0; width: 84px; font-family: var(--font-mono); font-size: 11.5px; color: var(--status-verified); }
+.evidenceOut { color: var(--status-stale); }
+.evidenceOut .evidenceTag { color: var(--status-stale); }
+
+.matrix { display: grid; grid-template-columns: 1fr auto auto; gap: 10px 16px; align-items: center; font-size: 13.5px; }
+.matrixRule { grid-column: 1 / -1; height: 1px; background: var(--border-default); }
+.ok { color: var(--status-verified); font-weight: 600; }
+.warn { color: var(--status-stale); font-weight: 600; }
+.neutral { color: var(--text-secondary); font-weight: 600; }
+
+.surfaces { display: flex; flex-direction: column; gap: 30px; padding: 56px 0; border-top: 1px solid var(--border-default); }
+@media (min-width: 1000px) { .surfaces { padding: 72px 0; } }
+
+.surfaceHead { display: flex; flex-direction: column; gap: 12px; max-width: 44em; }
+.surfaceGrid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 800px) { .surfaceGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.surfaceTitle { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.surfaceBody { font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); }
+.snippet {
+  margin-top: 2px;
+  padding: 7px 9px;
+  border-radius: var(--radius-control);
+  background: var(--code-surface);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-body);
+  overflow-x: auto;
+}
+
+.closer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 72px 20px;
+  text-align: center;
+  background: #09090b;
+}
+
+.closerH { font-size: 30px; line-height: 1.1; letter-spacing: -0.03em; font-weight: 700; color: #fafafa; max-width: 17em; }
+@media (min-width: 700px) { .closerH { font-size: 40px; } }
+.closerP { font-size: 16px; line-height: 1.6; color: #a1a1aa; max-width: 34em; }

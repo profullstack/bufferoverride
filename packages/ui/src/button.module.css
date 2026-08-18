@@ -1,0 +1,56 @@
+/* shadcn Button anatomy: 36px default, 6px radius, xs shadow, 3px focus ring. */
+.base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-family: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.base:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 30%, transparent);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
+}
+
+.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.md { height: 36px; padding: 0 16px; font-size: 14px; }
+.lg { height: 40px; padding: 0 18px; font-size: 14px; }
+
+.default {
+  background: var(--text-primary);
+  color: var(--surface-canvas);
+  box-shadow: var(--shadow-xs);
+}
+.default:hover { background: color-mix(in srgb, var(--text-primary) 88%, var(--surface-canvas)); }
+
+.primary {
+  background: var(--accent-primary);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+.primary:hover { background: var(--accent-primary-hover); }
+
+.secondary { background: var(--surface-raised); color: var(--text-primary); }
+.secondary:hover { background: var(--border-default); }
+
+.outline {
+  border-color: var(--border-default);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+.outline:hover { background: var(--surface-raised); }
+
+.ghost { background: transparent; color: var(--text-body); }
+.ghost:hover { background: var(--surface-raised); color: var(--text-primary); }
+
+.block { width: 100%; }

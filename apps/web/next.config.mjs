@@ -3,6 +3,6 @@ export default {
   reactStrictMode: true,
   // The libSQL client is a native-ish dependency; keep it out of the bundle.
   serverExternalPackages: ['@libsql/client'],
-  transpilePackages: ['@bufferoverride/db'],
+  transpilePackages: ['@bufferoverride/db', '@bufferoverride/ui', '@bufferoverride/design-tokens'],
   poweredByHeader: false,
 };

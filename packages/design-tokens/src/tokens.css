@@ -1,0 +1,133 @@
+/*
+ * Semantic design tokens.
+ *
+ * Light is defined on bare :root so a page always has a complete palette.
+ * Dark redefines only what changes, in both the media-query and the explicit
+ * attribute form, so an explicit choice wins in either direction and the
+ * default "system" setting still resolves.
+ *
+ * shadcn slot -> BufferOverride name:
+ *   --background       --surface-canvas       --primary   --accent-primary
+ *   --card             --surface-panel        --muted     --surface-raised
+ *   --foreground       --text-primary         --border    --border-default
+ *   --muted-foreground --text-secondary       --ring      --focus-ring
+ */
+
+:root {
+  --surface-canvas: #ffffff;
+  --surface-panel: #ffffff;
+  --surface-raised: #f4f4f5;
+  --surface-inset: #fafafa;
+
+  --text-primary: #09090b;
+  --text-secondary: #71717a;
+  --text-muted: #a1a1aa;
+  --text-body: #27272a;
+
+  --border-default: #e4e4e7;
+  --border-strong: #d4d4d8;
+
+  --accent-primary: #2b4eff;
+  --accent-primary-hover: #1e3acc;
+  --accent-contrast: #ffffff;
+  --accent-soft: #eef1ff;
+  --accent-soft-border: #d3daff;
+
+  --status-verified: #16794c;
+  --status-verified-soft: #ecfdf3;
+  --status-verified-border: #c6efd8;
+  --status-stale: #a16207;
+  --status-stale-soft: #fef6e7;
+  --status-stale-border: #f5e2b8;
+  --status-danger: #dc2626;
+  --status-danger-soft: #feecec;
+  --status-danger-border: #f7c9c9;
+
+  --code-surface: #f4f4f5;
+  --focus-ring: #2b4eff;
+
+  --radius-sm: 4px;
+  --radius-control: 6px;
+  --radius-panel: 12px;
+
+  --shadow-xs: 0 1px 2px rgba(9, 9, 11, 0.05);
+  --shadow-sm: 0 1px 3px rgba(9, 9, 11, 0.08);
+
+  --space-page: 56px;
+
+  --font-ui: "Helvetica Neue", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-canvas: #09090b;
+    --surface-panel: #111113;
+    --surface-raised: #1c1c1f;
+    --surface-inset: #131316;
+
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --text-body: #d4d4d8;
+
+    --border-default: #27272a;
+    --border-strong: #3f3f46;
+
+    --accent-primary: #5b7cff;
+    --accent-primary-hover: #7d97ff;
+    --accent-contrast: #09090b;
+    --accent-soft: #16213f;
+    --accent-soft-border: #24356b;
+
+    --status-verified: #34d399;
+    --status-verified-soft: #0c2c1e;
+    --status-verified-border: #14432e;
+    --status-stale: #fbbf24;
+    --status-stale-soft: #2a2010;
+    --status-stale-border: #453313;
+    --status-danger: #f87171;
+    --status-danger-soft: #2b1414;
+    --status-danger-border: #4c1f1f;
+
+    --code-surface: #16161a;
+    --focus-ring: #5b7cff;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface-canvas: #09090b;
+  --surface-panel: #111113;
+  --surface-raised: #1c1c1f;
+  --surface-inset: #131316;
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-body: #d4d4d8;
+
+  --border-default: #27272a;
+  --border-strong: #3f3f46;
+
+  --accent-primary: #5b7cff;
+  --accent-primary-hover: #7d97ff;
+  --accent-contrast: #09090b;
+  --accent-soft: #16213f;
+  --accent-soft-border: #24356b;
+
+  --status-verified: #34d399;
+  --status-verified-soft: #0c2c1e;
+  --status-verified-border: #14432e;
+  --status-stale: #fbbf24;
+  --status-stale-soft: #2a2010;
+  --status-stale-border: #453313;
+  --status-danger: #f87171;
+  --status-danger-soft: #2b1414;
+  --status-danger-border: #4c1f1f;
+
+  --code-surface: #16161a;
+  --focus-ring: #5b7cff;
+}

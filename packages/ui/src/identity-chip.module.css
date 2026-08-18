@@ -1,0 +1,4 @@
+.row { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+.name:hover { color: var(--accent-primary); }
+.meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }

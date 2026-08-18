@@ -1,94 +1,82 @@
-/*
- * Semantic tokens. Light is defined on bare :root so a page always has a
- * complete palette; dark redefines only what changes, in both the media-query
- * and explicit-attribute forms so a toggle wins in either direction.
- */
-:root {
-  --surface-canvas: #fbfbfa;
-  --surface-panel: #ffffff;
-  --surface-raised: #f4f4f2;
-  --text-primary: #14161a;
-  --text-secondary: #5b6169;
-  --border-default: #e2e3e0;
-  --accent-primary: #0b6bcb;
-  --status-verified: #197a4b;
-  --status-stale: #9a6700;
-  --code-surface: #f4f4f2;
-  --focus-ring: #0b6bcb;
-  --radius-control: 6px;
-  --radius-panel: 10px;
-  --space-page: 1.5rem;
-  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+@import '@bufferoverride/design-tokens/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --surface-canvas: #0e1013;
-    --surface-panel: #16191d;
-    --surface-raised: #1d2126;
-    --text-primary: #e8eaed;
-    --text-secondary: #9aa2ac;
-    --border-default: #2a2f36;
-    --accent-primary: #5fa8f5;
-    --status-verified: #4cc38a;
-    --status-stale: #d9a441;
-    --code-surface: #1d2126;
-    --focus-ring: #5fa8f5;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
-
-:root[data-theme="dark"] {
-  --surface-canvas: #0e1013;
-  --surface-panel: #16191d;
-  --surface-raised: #1d2126;
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa2ac;
-  --border-default: #2a2f36;
-  --accent-primary: #5fa8f5;
-  --status-verified: #4cc38a;
-  --status-stale: #d9a441;
-  --code-surface: #1d2126;
-  --focus-ring: #5fa8f5;
-}
-
-* { box-sizing: border-box; }
 
 body {
   margin: 0;
   background: var(--surface-canvas);
   color: var(--text-primary);
   font-family: var(--font-ui);
+  font-size: 14px;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--accent-primary); }
-
-code, pre { font-family: var(--font-mono); background: var(--code-surface); }
-
-:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-
-.wrap { max-width: 68rem; margin: 0 auto; padding: var(--space-page); }
-
-.masthead {
-  border-bottom: 1px solid var(--border-default);
-  background: var(--surface-panel);
+h1,
+h2,
+h3 {
+  margin: 0;
+  letter-spacing: -0.024em;
+  text-wrap: pretty;
 }
 
-.masthead .wrap { display: flex; align-items: baseline; gap: 1rem; padding-block: 1rem; }
-
-.brand { font-weight: 700; font-size: 1.125rem; text-decoration: none; color: var(--text-primary); }
-
-.tagline { color: var(--text-secondary); font-size: 0.875rem; }
-
-.card {
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-panel);
-  background: var(--surface-panel);
-  padding: 1rem 1.25rem;
-  margin-bottom: 0.75rem;
+p {
+  margin: 0;
+  text-wrap: pretty;
 }
 
-.meta { color: var(--text-secondary); font-size: 0.8125rem; }
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
 
-.empty { color: var(--text-secondary); }
+a:hover {
+  color: var(--accent-primary-hover);
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 30%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+code,
+pre,
+.mono {
+  font-family: var(--font-mono);
+}
+
+pre {
+  margin: 0;
+}
+
+/* Page gutter. Comfortable on mobile, compact and dense on the desktop grid. */
+.wrap {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (min-width: 900px) {
+  .wrap {
+    padding: 0 var(--space-page);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

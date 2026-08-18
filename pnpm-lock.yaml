@@ -37,6 +37,12 @@ importers:
       '@bufferoverride/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bufferoverride/design-tokens':
+        specifier: workspace:*
+        version: link:../../packages/design-tokens
+      '@bufferoverride/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^16.0.10
         version: 16.3.1(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -65,6 +71,17 @@ importers:
       '@libsql/client':
         specifier: ^0.15.15
         version: 0.15.15
+
+  packages/design-tokens: {}
+
+  packages/ui:
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.18
+      react:
+        specifier: ^19.2.0
+        version: 19.2.8
 
 packages:
 

@@ -1,50 +1,52 @@
 import { notFound } from 'next/navigation';
-import { db } from '@bufferoverride/db';
+import {
+  Badge,
+  Button,
+  CheckIcon,
+  ClockIcon,
+  IdentityChip,
+  Separator,
+  VersionPill,
+} from '@bufferoverride/ui';
+import { daysAgo, getQuestion, type AnswerRow } from '../../../_lib/queries.ts';
+import styles from '../../question.module.css';
 
 export const dynamic = 'force-dynamic';
 
 type Params = { params: Promise<{ id: string; slug: string }> };
 
-async function load(id: number) {
-  const question = await db().execute({
-    sql: `select q.*, a.username as author
-          from questions q left join actors a on a.id = q.author_id
-          where q.id = ?`,
-    args: [id],
-  });
-  if (!question.rows.length) return null;
-
-  const answers = await db().execute({
-    sql: `select ans.*, a.username as author
-          from answers ans left join actors a on a.id = ans.author_id
-          where ans.question_id = ?
-          order by ans.is_accepted desc, ans.verified_count desc, ans.created_at asc`,
-    args: [id],
-  });
-  return { question: question.rows[0] as never, answers: answers.rows as never[] };
-}
-
 export async function generateMetadata({ params }: Params) {
   const { id } = await params;
-  const data = await load(Number(id));
+  const data = await getQuestion(Number(id));
   if (!data) return { title: 'Not found' };
-  return { title: (data.question as { title: string }).title };
+  return {
+    title: data.question.title,
+    description: data.question.body.slice(0, 180),
+  };
+}
+
+/** The capsule is derived from the best current answer, not a separate record. */
+function pickCanonical(answers: AnswerRow[]): AnswerRow | undefined {
+  const live = answers.filter((a) => !a.is_stale);
+  return (
+    live.find((a) => a.is_accepted) ??
+    [...live].sort((a, b) => b.verified_count - a.verified_count)[0]
+  );
+}
+
+function kindOf(k: string | null): 'human' | 'agent' | 'organization' {
+  return k === 'agent' || k === 'organization' ? k : 'human';
 }
 
 export default async function QuestionPage({ params }: Params) {
   const { id } = await params;
-  const data = await load(Number(id));
+  const data = await getQuestion(Number(id));
   if (!data) notFound();
 
-  const q = data.question as {
-    title: string;
-    body: string;
-    author: string | null;
-    created_at: string;
-    attribution: string;
-  };
+  const { question: q, answers, verifications, tags } = data;
+  const canonical = pickCanonical(answers);
+  const independent = verifications.filter((v) => v.is_independent && v.result === 'pass').length;
 
-  // JSON-LD describes what is visible on the page, nothing more.
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'QAPage',
@@ -53,55 +55,240 @@ export default async function QuestionPage({ params }: Params) {
       name: q.title,
       text: q.body,
       dateCreated: q.created_at,
-      answerCount: data.answers.length,
+      answerCount: answers.length,
       author: q.author ? { '@type': 'Person', name: q.author } : undefined,
+      acceptedAnswer: canonical
+        ? { '@type': 'Answer', text: canonical.body, upvoteCount: canonical.verified_count }
+        : undefined,
+      suggestedAnswer: answers
+        .filter((a) => a.id !== canonical?.id)
+        .map((a) => ({ '@type': 'Answer', text: a.body })),
     },
   };
 
   return (
-    <>
+    <div className="wrap">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <article>
-        <h1>{q.title}</h1>
-        <p className="meta">
-          asked by {q.author ?? 'unknown'} · {q.created_at} · attribution: {q.attribution}
-        </p>
-        <div className="card">
-          <pre style={{ whiteSpace: 'pre-wrap', background: 'transparent', margin: 0 }}>
-            {q.body}
-          </pre>
+      <div className={styles.grid}>
+        <div className={styles.main}>
+          <nav className={styles.crumbs} aria-label="Breadcrumb">
+            <a href="/questions">Questions</a>
+            <span>/</span>
+            {tags[0] ? (
+              <>
+                <a href={`/tags/${tags[0]}`}>{tags[0]}</a>
+                <span>/</span>
+              </>
+            ) : null}
+            <span className="mono">#{q.id}</span>
+          </nav>
+
+          <h1 className={styles.h1}>{q.title}</h1>
+
+          <div className={styles.meta}>
+            <span>Asked {daysAgo(q.created_at)}</span>
+            {verifications[0] ? (
+              <>
+                <span className={styles.sep}>·</span>
+                <span>
+                  Last verified{' '}
+                  <span className={styles.fresh}>{daysAgo(verifications[0].created_at)}</span>
+                </span>
+              </>
+            ) : null}
+            <span className={styles.sep}>·</span>
+            <span>
+              {answers.length} {answers.length === 1 ? 'answer' : 'answers'}
+            </span>
+          </div>
+
+          {canonical ? (
+            <section className={styles.capsule} aria-label="Canonical answer">
+              <div className={styles.capsuleHead}>
+                <CheckIcon size={15} />
+                <span className={styles.capsuleTitle}>
+                  {canonical.is_accepted ? 'Canonical answer' : 'Best current answer'}
+                </span>
+                <span className={styles.spacer} />
+                <span className={styles.capsuleRev}>updated {daysAgo(canonical.created_at)}</span>
+              </div>
+              <div className={styles.capsuleBody}>
+                <div className={styles.capsuleFacts}>
+                  {canonical.valid_from || canonical.valid_through ? (
+                    <VersionPill>
+                      {canonical.valid_from ?? 'any'} – {canonical.valid_through ?? 'current'}
+                    </VersionPill>
+                  ) : null}
+                  {canonical.verified_count > 0 ? (
+                    <Badge variant="verified">
+                      <CheckIcon />
+                      verified {canonical.verified_count}x
+                    </Badge>
+                  ) : (
+                    <Badge variant="stale">
+                      <ClockIcon />
+                      not independently verified
+                    </Badge>
+                  )}
+                  {canonical.is_accepted ? <Badge variant="secondary">accepted by asker</Badge> : null}
+                </div>
+
+                <p className={styles.capsuleText}>{canonical.body}</p>
+
+                <Separator />
+                <div className={styles.capsuleFoot}>
+                  <IdentityChip
+                    name={canonical.author ?? 'unknown'}
+                    kind={kindOf(canonical.author_kind)}
+                    attribution={canonical.attribution}
+                  />
+                  <span className={styles.spacer} />
+                  <Button href={`/q/${q.id}/${q.slug}/revisions`} variant="outline" size="sm">
+                    History
+                  </Button>
+                  <Button href={`/q/${q.id}/${q.slug}/challenge`} variant="outline" size="sm">
+                    Challenge
+                  </Button>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          <article className={styles.answer}>
+            <div className={styles.answerHead}>
+              <IdentityChip
+                name={q.author ?? 'unknown'}
+                kind={kindOf(q.author_kind)}
+                attribution={q.attribution}
+              />
+            </div>
+            <p className={styles.answerBody}>{q.body}</p>
+            <div className={styles.env}>
+              <div className={styles.envCell}>
+                <span className={styles.envKey}>ASKED</span>
+                <span className={styles.envVal}>{daysAgo(q.created_at)}</span>
+              </div>
+              <div className={styles.envCell}>
+                <span className={styles.envKey}>ANSWERS</span>
+                <span className={styles.envVal}>{answers.length}</span>
+              </div>
+              <div className={styles.envCell}>
+                <span className={styles.envKey}>VERIFIED</span>
+                <span className={styles.envVal}>{independent} independent</span>
+              </div>
+              <div className={styles.envCell}>
+                <span className={styles.envKey}>ATTRIBUTION</span>
+                <span className={styles.envVal}>{q.attribution}</span>
+              </div>
+            </div>
+            {tags.length ? (
+              <div className={styles.capsuleFacts}>
+                {tags.map((t) => (
+                  <a key={t} href={`/tags/${t}`}>
+                    <VersionPill>{t}</VersionPill>
+                  </a>
+                ))}
+              </div>
+            ) : null}
+          </article>
+
+          <div className={styles.answersHead}>
+            <h2 className={styles.h2}>
+              {answers.length} {answers.length === 1 ? 'answer' : 'answers'}
+            </h2>
+          </div>
+
+          {answers.map((a) => (
+            <article
+              key={a.id}
+              id={`answer-${a.id}`}
+              className={`${styles.answer} ${a.is_stale ? styles.answerStale : ''}`}
+            >
+              <div className={styles.answerHead}>
+                <IdentityChip
+                  name={a.author ?? 'unknown'}
+                  kind={kindOf(a.author_kind)}
+                  attribution={a.attribution}
+                />
+                <span className={styles.spacer} />
+                {a.is_stale ? (
+                  <Badge variant="stale">
+                    <ClockIcon />
+                    stale
+                  </Badge>
+                ) : a.verified_count > 0 ? (
+                  <Badge variant="verified">
+                    <CheckIcon />
+                    verified {a.verified_count}x
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">awaiting verification</Badge>
+                )}
+                {a.is_accepted ? <Badge variant="secondary">accepted</Badge> : null}
+              </div>
+              <p className={styles.answerBody}>{a.body}</p>
+              <div className={styles.validity}>
+                <span className={styles.validityKey}>valid</span>
+                <span>
+                  {a.valid_from ?? 'any'} – {a.valid_through ?? 'current'}
+                </span>
+                <span className={styles.spacer} />
+                <span className={styles.validityKey}>reproduced by</span>
+                <span>{a.verified_count} independent</span>
+              </div>
+            </article>
+          ))}
         </div>
 
-        <h2>
-          {data.answers.length} {data.answers.length === 1 ? 'answer' : 'answers'}
-        </h2>
-        {data.answers.map((raw) => {
-          const a = raw as unknown as {
-            id: number;
-            body: string;
-            author: string | null;
-            is_accepted: number;
-            verified_count: number;
-          };
-          return (
-            <section key={a.id} id={`answer-${a.id}`} className="card">
-              <p className="meta">
-                {a.author ?? 'unknown'}
-                {a.is_accepted ? ' · accepted' : null}
-                {a.verified_count > 0
-                  ? ` · verified by ${a.verified_count}`
-                  : ' · not independently verified'}
-              </p>
-              <pre style={{ whiteSpace: 'pre-wrap', background: 'transparent', margin: 0 }}>
-                {a.body}
-              </pre>
-            </section>
-          );
-        })}
-      </article>
-    </>
+        <aside className={styles.side}>
+          <div className={styles.sideCard}>
+            <div className={styles.sideTitle}>Reproduce this</div>
+            <p className={styles.sideBody}>
+              Run it in your own environment and publish the result. Verification by someone
+              independent of the author is the only kind that counts.
+            </p>
+            <div className={styles.sideCode}>
+              bo verify {q.id}
+              {canonical ? ` --answer ${canonical.id}` : ''}
+            </div>
+          </div>
+
+          {verifications.length ? (
+            <div className={styles.sideCard}>
+              <div className={styles.sideTitle}>Verification log</div>
+              <div className={styles.log}>
+                {verifications.map((v, i) => (
+                  <div className={styles.logRow} key={i}>
+                    <span
+                      className={`${styles.logDot} ${v.is_independent ? '' : styles.logDotMuted}`}
+                    />
+                    <div>
+                      <div className={styles.logMain}>
+                        {v.result} · {v.environment ?? 'unspecified'}
+                      </div>
+                      <div className={`${styles.logMeta} ${v.is_independent ? '' : styles.logWarn}`}>
+                        {v.actor ?? 'unknown'}, {daysAgo(v.created_at)}
+                        {v.is_independent ? ', independent' : ', not independent'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className={styles.sideCard}>
+            <div className={styles.sideTitle}>Machine formats</div>
+            <div className={styles.links}>
+              <a href={`/api/v1/questions/${q.id}`}>/api/v1/questions/{q.id}</a>
+              <a href="/mcp">buffer://question/{q.id}</a>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
   );
 }

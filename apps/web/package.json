@@ -12,7 +12,9 @@
     "@bufferoverride/db": "workspace:*",
     "next": "^16.0.10",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "@bufferoverride/ui": "workspace:*",
+    "@bufferoverride/design-tokens": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.2.18",
