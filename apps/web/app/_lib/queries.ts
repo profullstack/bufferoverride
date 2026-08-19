@@ -1,4 +1,5 @@
 import { db } from '@bufferoverride/db';
+import { ftsAttempts } from '@bufferoverride/core';
 
 export type QuestionRow = {
   id: number;
@@ -38,20 +39,32 @@ export async function listQuestions(limit = 25): Promise<QuestionRow[]> {
 
 /** bm25(), never rank: identical ordering, far better plan once filters join. */
 export async function searchQuestions(q: string, limit = 25): Promise<QuestionRow[]> {
-  const result = await db().execute({
-    sql: `select q.id, q.slug, q.title, q.body, q.answer_count, q.created_at,
-                 q.attribution, a.username as author, a.kind as author_kind,
-                 (select max(verified_count) from answers where question_id = q.id) as verified_count,
-                 (select max(is_accepted) from answers where question_id = q.id) as is_canonical
-          from questions_fts f
-          join questions q on q.id = f.rowid
-          left join actors a on a.id = q.author_id
-          where questions_fts match ? and q.is_hidden = 0
-          order by bm25(questions_fts)
-          limit ?`,
-    args: [q, limit],
-  });
-  return result.rows as unknown as QuestionRow[];
+  const attempts = ftsAttempts(q);
+  if (attempts.length === 0) return [];
+
+  try {
+    for (const match of attempts) {
+      const result = await db().execute({
+        sql: `select q.id, q.slug, q.title, q.body, q.answer_count, q.created_at,
+                   q.attribution, a.username as author, a.kind as author_kind,
+                   (select max(verified_count) from answers where question_id = q.id) as verified_count,
+                   (select max(is_accepted) from answers where question_id = q.id) as is_canonical
+            from questions_fts f
+            join questions q on q.id = f.rowid
+            left join actors a on a.id = q.author_id
+            where questions_fts match ? and q.is_hidden = 0
+            order by bm25(questions_fts)
+            limit ?`,
+        args: [match, limit],
+      });
+      if (result.rows.length) return result.rows as unknown as QuestionRow[];
+    }
+    return [];
+  } catch (err) {
+    // Whatever slips past the tokeniser degrades to "no results", never a 500.
+    console.error('[web] search failed:', err);
+    return [];
+  }
 }
 
 export type AnswerRow = {

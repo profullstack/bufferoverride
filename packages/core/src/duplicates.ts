@@ -1,4 +1,5 @@
 import { db } from '@bufferoverride/db';
+import { toFtsQuery } from './fts.ts';
 
 export type DuplicateHit = {
   id: number;
@@ -20,14 +21,9 @@ export type DuplicateHit = {
  * pasted error would otherwise be a query syntax error, not a search.
  */
 export async function findDuplicates(draftTitle: string, limit = 5): Promise<DuplicateHit[]> {
-  const terms = draftTitle
-    .toLowerCase()
-    .split(/[^a-z0-9_.+#-]+/)
-    .filter((t) => t.length > 2)
-    .slice(0, 12);
-
-  if (terms.length === 0) return [];
-  const query = terms.map((t) => `"${t.replace(/"/g, '')}"`).join(' OR ');
+  // OR here on purpose: suggestions want recall, not precision.
+  const query = toFtsQuery(draftTitle, 'or');
+  if (!query) return [];
 
   try {
     const r = await db().execute({

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db, env } from '@bufferoverride/db';
 import { areIndependent, principalFromAuthHeader, type Scope } from '@bufferoverride/auth';
-import { scanSecrets, validateAnswer } from '@bufferoverride/core';
+import { ftsAttempts, scanSecrets, validateAnswer } from '@bufferoverride/core';
 
 export const mcp = new Hono();
 
@@ -189,19 +189,26 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
     const query = String(args.query ?? '').trim();
     if (!query) throw new Error('query is required');
     const limit = Math.min(Number(args.limit ?? 10), 50);
-    const r = await db().execute({
+    const attempts = ftsAttempts(query);
+    if (attempts.length === 0) return { query, count: 0, results: [] };
+    let found: Record<string, unknown>[] = [];
+    for (const match of attempts) {
+      const r = await db().execute({
       sql: `select q.id, q.slug, q.title, q.answer_count,
                    (select max(verified_count) from answers where question_id = q.id) as verified
             from questions_fts f join questions q on q.id = f.rowid
             where questions_fts match ? and q.is_hidden = 0
             order by bm25(questions_fts) limit ?`,
-      args: [query, limit],
-    });
+        args: [match, limit],
+      });
+      found = r.rows as unknown as Record<string, unknown>[];
+      if (found.length) break;
+    }
     return {
       query,
-      count: r.rows.length,
-      results: r.rows.map((row) => ({
-        ...(row as Record<string, unknown>),
+      count: found.length,
+      results: found.map((row) => ({
+        ...row,
         url: `${base}/q/${row.id}/${row.slug}`,
       })),
     };

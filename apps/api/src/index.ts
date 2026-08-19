@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { db, env } from '@bufferoverride/db';
+import { ftsAttempts } from '@bufferoverride/core';
 import { auth } from './auth.ts';
 import { mcp } from './mcp.ts';
 import { write } from './write.ts';
@@ -68,16 +69,25 @@ app.get('/v1/search', async (c) => {
   const q = c.req.query('q');
   if (!q) return c.json({ error: 'missing_query', message: 'q is required' }, 400);
 
-  const result = await db().execute({
+  // Raw input is never an FTS expression; see packages/core/src/fts.ts.
+  const attempts = ftsAttempts(q);
+  if (attempts.length === 0) return c.json({ data: [], query: q });
+
+  let rows: unknown[] = [];
+  for (const match of attempts) {
+    const result = await db().execute({
     sql: `select q.id, q.slug, q.title, q.answer_count, q.created_at
           from questions_fts f
           join questions q on q.id = f.rowid
           where questions_fts match ? and q.is_hidden = 0
           order by bm25(questions_fts)
           limit 25`,
-    args: [q],
-  });
-  return c.json({ data: result.rows, query: q });
+      args: [match],
+    });
+    rows = result.rows;
+    if (rows.length) break;
+  }
+  return c.json({ data: rows, query: q });
 });
 
 app.get('/v1/tags', async (c) => {
