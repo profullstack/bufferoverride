@@ -473,3 +473,170 @@ export function FlagControl({
     </form>
   );
 }
+
+/**
+ * Challenging the canonical answer marks it stale immediately.
+ *
+ * That is deliberate: "someone competent says this is wrong" is information a
+ * reader needs before anyone has adjudicated, not after.
+ */
+export function ChallengeControl({ questionId, signedIn }: { questionId: number; signedIn: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className={styles.action}
+        onClick={() => (signedIn ? setOpen(true) : toLogin())}
+      >
+        Challenge
+      </button>
+    );
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/v1/questions/${questionId}/canonical/challenge`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.errors?.[0]?.message ?? 'That could not be filed.');
+        setBusy(false);
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError('Could not reach the server.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className={styles.panel} onSubmit={submit}>
+      <span className={styles.panelTitle}>What is wrong with it?</span>
+      <p className={styles.hint}>
+        This marks the canonical answer stale straight away, so say which version it stopped being
+        true for if you know.
+      </p>
+      {error ? <div className={styles.err}>{error}</div> : null}
+      <textarea
+        className={styles.textarea}
+        style={{ minHeight: 90 }}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="No longer true from bun 1.4 — teardown ordering changed again and the handle survives."
+        required
+      />
+      <div className={styles.row}>
+        <button className={styles.submit} type="submit" disabled={busy}>
+          {busy ? 'Filing…' : 'Mark it stale'}
+        </button>
+        <button type="button" className={styles.action} onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Synthesise or revise the canonical answer. Every save is a new revision. */
+export function CanonicalEditor({
+  questionId,
+  current,
+  canEdit,
+}: {
+  questionId: number;
+  current: { body: string; works_with: string | null; known_exceptions: string | null } | null;
+  canEdit: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [body, setBody] = useState(current?.body ?? '');
+  const [worksWith, setWorksWith] = useState(current?.works_with ?? '');
+  const [exceptions, setExceptions] = useState(current?.known_exceptions ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!canEdit) return null;
+
+  if (!open) {
+    return (
+      <button type="button" className={styles.action} onClick={() => setOpen(true)}>
+        {current ? 'Revise' : 'Write the canonical answer'}
+      </button>
+    );
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/v1/questions/${questionId}/canonical`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body, worksWith, knownExceptions: exceptions }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(
+          json.errors?.[0]?.message ??
+            (json.error === 'secrets_detected' ? 'That text contains a credential.' : 'Not saved.'),
+        );
+        setBusy(false);
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError('Could not reach the server.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className={styles.panel} onSubmit={submit}>
+      <span className={styles.panelTitle}>Canonical answer</span>
+      <p className={styles.hint}>
+        Write what is true now, for whoever arrives next. Every save is a new revision and nothing
+        below it is rewritten.
+      </p>
+      {error ? <div className={styles.err}>{error}</div> : null}
+      <textarea
+        className={styles.textarea}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="The direct answer, in two to five sentences."
+        required
+      />
+      <input
+        className={styles.input}
+        value={worksWith}
+        onChange={(e) => setWorksWith(e.target.value)}
+        placeholder="Works with: bun 1.1–1.3, ubuntu 24.04, libSQL 0.15+"
+      />
+      <input
+        className={styles.input}
+        value={exceptions}
+        onChange={(e) => setExceptions(e.target.value)}
+        placeholder="Known exceptions (optional)"
+      />
+      <div className={styles.row}>
+        <button className={styles.submit} type="submit" disabled={busy}>
+          {busy ? 'Saving…' : 'Save revision'}
+        </button>
+        <button type="button" className={styles.action} onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}

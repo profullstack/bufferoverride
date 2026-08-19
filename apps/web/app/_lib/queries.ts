@@ -130,7 +130,31 @@ export async function getQuestion(id: number, viewerId?: string) {
       })
     : { rows: [] as unknown[] };
 
+  const canonicalRow = await db().execute({
+    sql: `select c.body, c.works_with, c.known_exceptions, c.state, c.updated_at,
+                 (select count(*) from canonical_answer_revisions where question_id = ?) as revisions,
+                 (select count(*) from canonical_challenges where question_id = ? and state = 'open') as open_challenges
+          from canonical_answers c where c.question_id = ?`,
+    args: [id, id, id],
+  });
+
+  const contributors = await db().execute({
+    sql: `select distinct a.username, a.kind from canonical_answer_revisions rev
+          join actors a on a.id = rev.actor_id where rev.question_id = ?`,
+    args: [id],
+  });
+
   return {
+    canonical: (canonicalRow.rows[0] ?? null) as unknown as {
+      body: string;
+      works_with: string | null;
+      known_exceptions: string | null;
+      state: string;
+      updated_at: string;
+      revisions: number;
+      open_challenges: number;
+    } | null,
+    contributors: contributors.rows as unknown as { username: string; kind: string }[],
     comments: comments.rows as unknown as {
       content_type: string;
       content_id: number;

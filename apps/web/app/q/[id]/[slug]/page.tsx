@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { SESSION_COOKIE, actorFromSessionToken } from '@bufferoverride/auth';
+import { db } from '@bufferoverride/db';
 import {
   Badge,
   Button,
@@ -14,6 +15,8 @@ import { daysAgo, getQuestion, type AnswerRow } from '../../../_lib/queries.ts';
 import {
   AcceptControl,
   AnswerForm,
+  CanonicalEditor,
+  ChallengeControl,
   CommentThread,
   FlagControl,
   VerifyControl,
@@ -55,14 +58,29 @@ export default async function QuestionPage({ params }: Params) {
   const data = await getQuestion(Number(id), viewer?.id);
   if (!data) notFound();
 
-  const { question: q, answers, verifications, tags, comments, votes } = data;
+  const { question: q, answers, verifications, tags, comments, votes, canonical, contributors } = data;
   const signedIn = !!viewer;
+  const viewerReputation = viewer
+    ? Number(
+        (
+          (
+            await db().execute({ sql: 'select reputation from actors where id = ?', args: [viewer.id] })
+          ).rows[0] as unknown as { reputation: number }
+        )?.reputation ?? 0,
+      )
+    : 0;
   const isAsker = !!viewer && (q as unknown as { author_id: string }).author_id === viewer.id;
+  // Same bootstrapping rule the API enforces: solving the question earns the
+  // right to write its canonical answer.
+  const wroteAccepted =
+    !!viewer && answers.some((a) => a.is_accepted === 1 && a.author_id === viewer.id);
   const voteFor = (type: string, cid: number) =>
     votes.find((v) => v.content_type === type && v.content_id === cid)?.value ?? 0;
   const commentsFor = (type: string, cid: number) =>
     comments.filter((cm) => cm.content_type === type && cm.content_id === cid);
-  const canonical = pickCanonical(answers);
+  // A written canonical answer speaks for the question. Absent one, the best
+  // current answer stands in — labelled as exactly that, never as canonical.
+  const best = pickCanonical(answers);
   const independent = verifications.filter((v) => v.is_independent && v.result === 'pass').length;
 
   const jsonLd = {
@@ -76,10 +94,12 @@ export default async function QuestionPage({ params }: Params) {
       answerCount: answers.length,
       author: q.author ? { '@type': 'Person', name: q.author } : undefined,
       acceptedAnswer: canonical
-        ? { '@type': 'Answer', text: canonical.body, upvoteCount: canonical.verified_count }
-        : undefined,
+        ? { '@type': 'Answer', text: canonical.body }
+        : best
+          ? { '@type': 'Answer', text: best.body, upvoteCount: best.verified_count }
+          : undefined,
       suggestedAnswer: answers
-        .filter((a) => a.id !== canonical?.id)
+        .filter((a) => a.id !== best?.id)
         .map((a) => ({ '@type': 'Answer', text: a.body })),
     },
   };
@@ -123,27 +143,48 @@ export default async function QuestionPage({ params }: Params) {
             </span>
           </div>
 
-          {canonical ? (
+          {canonical || best ? (
             <section className={styles.capsule} aria-label="Canonical answer">
-              <div className={styles.capsuleHead}>
-                <CheckIcon size={15} />
+              <div
+                className={styles.capsuleHead}
+                style={
+                  canonical?.state === 'stale'
+                    ? {
+                        background: 'var(--status-stale-soft)',
+                        borderColor: 'var(--status-stale-border)',
+                        color: 'var(--status-stale)',
+                      }
+                    : undefined
+                }
+              >
+                {canonical?.state === 'stale' ? <ClockIcon size={15} /> : <CheckIcon size={15} />}
                 <span className={styles.capsuleTitle}>
-                  {canonical.is_accepted ? 'Canonical answer' : 'Best current answer'}
+                  {canonical
+                    ? canonical.state === 'stale'
+                      ? 'Canonical answer — challenged'
+                      : 'Canonical answer'
+                    : 'Best current answer'}
                 </span>
                 <span className={styles.spacer} />
-                <span className={styles.capsuleRev}>updated {daysAgo(canonical.created_at)}</span>
+                <span className={styles.capsuleRev}>
+                  {canonical
+                    ? `revision ${canonical.revisions} · updated ${daysAgo(canonical.updated_at)}`
+                    : `not yet written · ${daysAgo(best!.created_at)}`}
+                </span>
               </div>
               <div className={styles.capsuleBody}>
                 <div className={styles.capsuleFacts}>
-                  {canonical.valid_from || canonical.valid_through ? (
+                  {canonical?.works_with ? (
+                    <VersionPill>{canonical.works_with}</VersionPill>
+                  ) : best && (best.valid_from || best.valid_through) ? (
                     <VersionPill>
-                      {canonical.valid_from ?? 'any'} – {canonical.valid_through ?? 'current'}
+                      {best.valid_from ?? 'any'} – {best.valid_through ?? 'current'}
                     </VersionPill>
                   ) : null}
-                  {canonical.verified_count > 0 ? (
+                  {independent > 0 ? (
                     <Badge variant="verified">
                       <CheckIcon />
-                      verified {canonical.verified_count}x
+                      reproduced by {independent} independent
                     </Badge>
                   ) : (
                     <Badge variant="stale">
@@ -151,22 +192,51 @@ export default async function QuestionPage({ params }: Params) {
                       not independently verified
                     </Badge>
                   )}
-                  {canonical.is_accepted ? <Badge variant="secondary">accepted by asker</Badge> : null}
+                  {canonical?.open_challenges ? (
+                    <Badge variant="stale">
+                      {canonical.open_challenges} open challenge
+                      {canonical.open_challenges === 1 ? '' : 's'}
+                    </Badge>
+                  ) : null}
                 </div>
 
-                <p className={styles.capsuleText}>{canonical.body}</p>
+                <p className={styles.capsuleText}>{canonical ? canonical.body : best!.body}</p>
+
+                {canonical?.known_exceptions ? (
+                  <div className={styles.block}>
+                    <div className={styles.blockLabel}>KNOWN EXCEPTIONS</div>
+                    <p style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                      {canonical.known_exceptions}
+                    </p>
+                  </div>
+                ) : null}
 
                 <Separator />
                 <div className={styles.capsuleFoot}>
-                  <IdentityChip
-                    name={canonical.author ?? 'unknown'}
-                    kind={kindOf(canonical.author_kind)}
-                    attribution={canonical.attribution}
-                  />
+                  {canonical ? (
+                    contributors.length ? (
+                      <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                        Maintained by{' '}
+                        {contributors.map((cn) => cn.username).join(', ')}
+                      </span>
+                    ) : null
+                  ) : (
+                    <IdentityChip
+                      name={best!.author ?? 'unknown'}
+                      kind={kindOf(best!.author_kind)}
+                      attribution={best!.attribution}
+                    />
+                  )}
                   <span className={styles.spacer} />
-                  <Button href={`/q/${q.id}/${q.slug}/revisions`} variant="outline" size="sm">
+                  <Button href={`/q/${q.id}/${q.slug}/canonical`} variant="outline" size="sm">
                     History
                   </Button>
+                  <CanonicalEditor
+                    questionId={q.id}
+                    current={canonical}
+                    canEdit={signedIn && (viewerReputation >= 100 || wroteAccepted)}
+                  />
+                  {canonical ? <ChallengeControl questionId={q.id} signedIn={signedIn} /> : null}
                 </div>
               </div>
             </section>
@@ -307,7 +377,7 @@ export default async function QuestionPage({ params }: Params) {
             </p>
             <div className={styles.sideCode}>
               bo verify {q.id}
-              {canonical ? ` --answer ${canonical.id}` : ''}
+              {best ? ` --answer ${best.id}` : ''}
             </div>
           </div>
 
