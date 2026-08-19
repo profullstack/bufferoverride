@@ -1,4 +1,4 @@
-import { Button, LogoIcon, SearchIcon } from '@bufferoverride/ui';
+import { Button, SearchIcon } from '@bufferoverride/ui';
 import { AccountMenu } from './account-menu.tsx';
 import { CompactNav } from './compact-nav.tsx';
 import styles from './site-header.module.css';
@@ -16,7 +16,7 @@ export function SiteHeader({ current }: { current?: string }) {
     <header className={styles.header}>
       <div className={`wrap ${styles.bar}`}>
         <a className={styles.brand} href="/">
-          <LogoIcon size={20} />
+          <img className={styles.mark} src="/icons/icon-192x192.png" alt="" width={192} height={192} />
           <span className={styles.wordmark}>BufferOverride</span>
         </a>
 

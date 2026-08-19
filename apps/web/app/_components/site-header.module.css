@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 60px;
+  height: 76px;
 }
 
 /* Below ~400px the wordmark is the only thing that can go without removing a
@@ -25,12 +25,27 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.022em;
   white-space: nowrap;
+}
+
+/* The mark carries the brand, so it is sized to be seen. Served from the
+   192px rendition rather than the 1254px source: at 44px CSS that is still
+   sharp on a 3x screen and costs 9KB instead of 820KB. */
+.mark {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+@media (min-width: 700px) {
+  .mark { width: 52px; height: 52px; }
+  .brand { font-size: 22px; }
 }
 
 .nav {
@@ -41,9 +56,9 @@
 
 /* The nav appears only once it fits beside the account menu and the CTA;
    at 900 it fit only by pushing the CTA off the edge. */
-@media (min-width: 1024px) {
+@media (min-width: 1120px) {
   .nav { display: flex; }
-  .bar { gap: 32px; }
+  .bar { gap: 28px; }
 }
 
 .link {
@@ -70,7 +85,7 @@
 /* The disclosure that replaces the inline nav below its breakpoint. */
 .compact { display: flex; }
 
-@media (min-width: 1024px) {
+@media (min-width: 1120px) {
   .compact { display: none; }
 }
 
@@ -94,7 +109,7 @@
 /* The search field only appears once there is genuinely room for it beside the
    nav, the account menu and the CLI button. At 1100 it fit only by pushing
    them off the right edge. */
-@media (min-width: 1280px) {
+@media (min-width: 1440px) {
   .search { display: flex; }
 }
 
