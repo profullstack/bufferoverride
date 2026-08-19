@@ -27,3 +27,4 @@ apps/*/CLAUDE.md
 .data/
 
 .local-boot.mjs
+.origin-probe*.mjs

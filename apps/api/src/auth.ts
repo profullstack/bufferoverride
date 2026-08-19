@@ -20,16 +20,34 @@ import {
   readState,
   registrationOptions,
   requestMagicLink,
+  requestOrigin,
   sessionCookie,
   unlinkCoinpay,
   verifyAuthentication,
   verifyRegistration,
 } from '@bufferoverride/auth';
-import { env } from '@bufferoverride/db';
 
 export const auth = new Hono();
 
-const base = () => env('PUBLIC_BASE_URL') ?? 'http://localhost:3000';
+/**
+ * The origin this request arrived on, allowlisted — see packages/auth/origin.
+ *
+ * `Host` is a forbidden header name on a fetch Request, so Hono never exposes
+ * it; the node adapter has already folded it into the request URL, which is
+ * where it has to be read back from.
+ */
+function originOf(c: { req: { url: string; header(name: string): string | undefined } }): string {
+  const urlHost = (() => {
+    try {
+      return new URL(c.req.url).host;
+    } catch {
+      return undefined;
+    }
+  })();
+  return requestOrigin((name) =>
+    name.toLowerCase() === 'host' ? (c.req.header('host') ?? urlHost) : c.req.header(name),
+  );
+}
 
 /** Only ever bounce to a path on this origin — never to a supplied absolute URL. */
 function safeReturn(value: string | undefined): string {
@@ -50,7 +68,7 @@ auth.post('/v1/auth/magic', async (c) => {
   // invalid one, or a rate-limited one: anything else enumerates our users.
   if (isEmail(email)) {
     try {
-      await requestMagicLink(email, c.req.header('x-forwarded-for'));
+      await requestMagicLink(email, c.req.header('x-forwarded-for'), originOf(c));
     } catch (err) {
       console.error('[auth] magic link request failed:', err);
     }
@@ -66,14 +84,14 @@ auth.get('/auth/magic', async (c) => {
   if (!result) return c.redirect('/login?error=expired_link', 302);
 
   const session = await createSession(result.actor.id, c.req.header('user-agent'));
-  c.header('set-cookie', sessionCookie(session));
+  c.header('set-cookie', sessionCookie(session, undefined, originOf(c)));
   return c.redirect(result.created ? '/account?welcome=1' : '/', 302);
 });
 
 // ── CoinPay OAuth ─────────────────────────────────────────────────────────
 auth.get('/auth/coinpay/start', async (c) => {
   try {
-    const { url, cookie } = beginAuthorization(safeReturn(c.req.query('returnTo')));
+    const { url, cookie } = beginAuthorization(safeReturn(c.req.query('returnTo')), originOf(c));
     c.header('set-cookie', cookie);
     return c.redirect(url, 302);
   } catch (err) {
@@ -96,10 +114,15 @@ auth.get('/auth/coinpay/callback', async (c) => {
 
   const existing = await currentActor(c);
   try {
-    const { actor, created } = await completeAuthorization(code, stored.verifier, existing?.id);
+    const { actor, created } = await completeAuthorization(
+      code,
+      stored.verifier,
+      stored.redirectUri,
+      existing?.id,
+    );
     if (!existing) {
       const session = await createSession(actor.id, c.req.header('user-agent'));
-      c.header('set-cookie', sessionCookie(session), { append: true });
+      c.header('set-cookie', sessionCookie(session, undefined, originOf(c)), { append: true });
     }
     return c.redirect(created ? '/account?welcome=1' : safeReturn(stored.returnTo), 302);
   } catch (err) {
@@ -123,8 +146,9 @@ auth.post('/auth/coinpay/unlink', async (c) => {
 auth.post('/auth/passkey/register/options', async (c) => {
   const actor = await currentActor(c);
   if (!actor) return c.json({ error: 'unauthenticated' }, 401);
-  const { options, handle } = await registrationOptions(actor);
-  c.header('set-cookie', challengeCookie(handle));
+  const origin = originOf(c);
+  const { options, handle } = await registrationOptions(actor, origin);
+  c.header('set-cookie', challengeCookie(handle, origin));
   return c.json(options);
 });
 
@@ -133,20 +157,21 @@ auth.post('/auth/passkey/register/verify', async (c) => {
   if (!actor) return c.json({ error: 'unauthenticated' }, 401);
   const body = await c.req.json<{ response: never; label?: string }>();
   const handle = readCookie(c.req.header('cookie'), CHALLENGE_COOKIE);
-  const ok = await verifyRegistration(actor, handle, body.response, body.label);
+  const ok = await verifyRegistration(actor, handle, body.response, body.label, originOf(c));
   return ok ? c.json({ ok: true }) : c.json({ error: 'verification_failed' }, 400);
 });
 
 auth.post('/auth/passkey/login/options', async (c) => {
-  const { options, handle } = await authenticationOptions();
-  c.header('set-cookie', challengeCookie(handle));
+  const origin = originOf(c);
+  const { options, handle } = await authenticationOptions(origin);
+  c.header('set-cookie', challengeCookie(handle, origin));
   return c.json(options);
 });
 
 auth.post('/auth/passkey/login/verify', async (c) => {
   const body = await c.req.json<{ response: never }>();
   const handle = readCookie(c.req.header('cookie'), CHALLENGE_COOKIE);
-  const actor = await verifyAuthentication(handle, body.response);
+  const actor = await verifyAuthentication(handle, body.response, originOf(c));
   if (!actor) return c.json({ error: 'verification_failed' }, 400);
   const session = await createSession(actor.id, c.req.header('user-agent'));
   c.header('set-cookie', sessionCookie(session));
@@ -167,10 +192,8 @@ auth.get('/v1/auth/session', async (c) => {
 
 auth.post('/auth/logout', async (c) => {
   await destroySession(readCookie(c.req.header('cookie'), SESSION_COOKIE));
-  c.header('set-cookie', clearedSessionCookie());
+  c.header('set-cookie', clearedSessionCookie(originOf(c)));
   const accepts = c.req.header('accept') ?? '';
   if (accepts.includes('text/html')) return c.redirect('/', 302);
   return c.json({ ok: true });
 });
-
-export { base };

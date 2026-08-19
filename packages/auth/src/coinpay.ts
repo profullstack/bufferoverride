@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { db, env } from '@bufferoverride/db';
+import { canonicalOrigin } from './origin.ts';
 import { actorById, createActorForIdentity, type Actor } from './actors.ts';
 import { safeEqual } from './tokens.ts';
 
@@ -28,16 +29,22 @@ function b64url(input: Buffer | string): string {
 }
 
 /** state + PKCE verifier ride in one signed, short-lived cookie. */
-export function beginAuthorization(returnTo: string): { url: string; cookie: string } {
+export function beginAuthorization(
+  returnTo: string,
+  origin = canonicalOrigin(),
+): { url: string; cookie: string } {
   const clientId = env('COINPAY_CLIENT_ID');
-  const redirectUri = `${env('PUBLIC_BASE_URL') ?? 'http://localhost:3000'}/auth/coinpay/callback`;
+  // Built from the host actually being served, and carried in the state cookie
+  // so the token exchange presents the identical value. Every host the app
+  // answers on must therefore be a registered redirect URI on the CoinPay side.
+  const redirectUri = `${origin}/auth/coinpay/callback`;
   if (!clientId) throw new Error('COINPAY_CLIENT_ID is not configured');
 
   const state = randomBytes(16).toString('base64url');
   const verifier = randomBytes(32).toString('base64url');
   const challenge = b64url(createHash('sha256').update(verifier).digest());
 
-  const payload = b64url(JSON.stringify({ state, verifier, returnTo, ts: Date.now() }));
+  const payload = b64url(JSON.stringify({ state, verifier, returnTo, redirectUri, ts: Date.now() }));
   const cookieValue = `${payload}.${sign(payload)}`;
 
   const url = new URL(`${ISSUER}/api/oauth/authorize`);
@@ -60,7 +67,13 @@ export function clearedStateCookie(): string {
   return `${COINPAY_STATE_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
-type StatePayload = { state: string; verifier: string; returnTo: string; ts: number };
+type StatePayload = {
+  state: string;
+  verifier: string;
+  returnTo: string;
+  redirectUri: string;
+  ts: number;
+};
 
 export function readState(cookieValue: string | undefined): StatePayload | null {
   if (!cookieValue) return null;
@@ -87,11 +100,15 @@ type UserInfo = {
   preferred_username?: string;
 };
 
-async function exchangeCode(code: string, verifier: string): Promise<TokenResponse> {
+async function exchangeCode(
+  code: string,
+  verifier: string,
+  redirectUri: string,
+): Promise<TokenResponse> {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
-    redirect_uri: `${env('PUBLIC_BASE_URL') ?? 'http://localhost:3000'}/auth/coinpay/callback`,
+    redirect_uri: redirectUri,
     client_id: env('COINPAY_CLIENT_ID') ?? '',
     client_secret: env('COINPAY_CLIENT_SECRET') ?? '',
     code_verifier: verifier,
@@ -124,9 +141,10 @@ async function fetchUserInfo(accessToken: string): Promise<UserInfo> {
 export async function completeAuthorization(
   code: string,
   verifier: string,
+  redirectUri: string,
   currentActorId?: string,
 ): Promise<{ actor: Actor; created: boolean }> {
-  const tokens = await exchangeCode(code, verifier);
+  const tokens = await exchangeCode(code, verifier, redirectUri);
   const info = await fetchUserInfo(tokens.access_token);
   if (!info.sub) throw new Error('coinpay userinfo returned no subject');
 

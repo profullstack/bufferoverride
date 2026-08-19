@@ -5,23 +5,22 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
-import { db, env } from '@bufferoverride/db';
+import { db } from '@bufferoverride/db';
+import { canonicalOrigin, rpIdFor } from './origin.ts';
 import { actorById, type Actor } from './actors.ts';
 import { isExpired, minutesFromNow } from './tokens.ts';
 
 export const CHALLENGE_COOKIE = 'bo_webauthn';
 
-function origin(): string {
-  return env('PUBLIC_BASE_URL') ?? 'http://localhost:3000';
+// Origin is passed in per request rather than read from config: a credential
+// registered on one host cannot be asserted on another, so both the expected
+// origin and the rpID must track the host actually being served.
+function fallbackOrigin(): string {
+  return canonicalOrigin();
 }
 
-/** The Relying Party ID is the registrable domain, never the full origin. */
-function rpID(): string {
-  return new URL(origin()).hostname;
-}
-
-export function challengeCookie(handle: string): string {
-  const secure = origin().startsWith('https://') ? '; Secure' : '';
+export function challengeCookie(handle: string, origin = fallbackOrigin()): string {
+  const secure = origin.startsWith('https://') ? '; Secure' : '';
   return `${CHALLENGE_COOKIE}=${handle}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=300`;
 }
 
@@ -53,7 +52,7 @@ async function takeChallenge(handle: string | undefined, purpose: string) {
   return row;
 }
 
-export async function registrationOptions(actor: Actor) {
+export async function registrationOptions(actor: Actor, origin = fallbackOrigin()) {
   const existing = await db().execute({
     sql: 'select credential_id from passkeys where actor_id = ?',
     args: [actor.id],
@@ -61,7 +60,7 @@ export async function registrationOptions(actor: Actor) {
 
   const options = await generateRegistrationOptions({
     rpName: 'BufferOverride',
-    rpID: rpID(),
+    rpID: rpIdFor(origin),
     userName: actor.username,
     userDisplayName: actor.display_name,
     attestationType: 'none',
@@ -80,6 +79,7 @@ export async function verifyRegistration(
   handle: string | undefined,
   response: Parameters<typeof verifyRegistrationResponse>[0]['response'],
   label?: string,
+  origin = fallbackOrigin(),
 ): Promise<boolean> {
   const stored = await takeChallenge(handle, 'register');
   if (!stored || stored.actor_id !== actor.id) return false;
@@ -87,8 +87,8 @@ export async function verifyRegistration(
   const verification = await verifyRegistrationResponse({
     response,
     expectedChallenge: stored.challenge,
-    expectedOrigin: origin(),
-    expectedRPID: rpID(),
+    expectedOrigin: origin,
+    expectedRPID: rpIdFor(origin),
   });
   if (!verification.verified || !verification.registrationInfo) return false;
 
@@ -119,9 +119,9 @@ export async function verifyRegistration(
 }
 
 /** Usernameless authentication: the credential itself identifies the actor. */
-export async function authenticationOptions() {
+export async function authenticationOptions(origin = fallbackOrigin()) {
   const options = await generateAuthenticationOptions({
-    rpID: rpID(),
+    rpID: rpIdFor(origin),
     userVerification: 'preferred',
   });
   const handle = await storeChallenge(options.challenge, 'authenticate');
@@ -131,6 +131,7 @@ export async function authenticationOptions() {
 export async function verifyAuthentication(
   handle: string | undefined,
   response: Parameters<typeof verifyAuthenticationResponse>[0]['response'],
+  origin = fallbackOrigin(),
 ): Promise<Actor | null> {
   const stored = await takeChallenge(handle, 'authenticate');
   if (!stored) return null;
@@ -147,8 +148,8 @@ export async function verifyAuthentication(
   const verification = await verifyAuthenticationResponse({
     response,
     expectedChallenge: stored.challenge,
-    expectedOrigin: origin(),
-    expectedRPID: rpID(),
+    expectedOrigin: origin,
+    expectedRPID: rpIdFor(origin),
     credential: {
       id: response.id,
       publicKey: new Uint8Array(Buffer.from(row.public_key, 'base64url')),

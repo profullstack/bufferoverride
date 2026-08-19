@@ -82,6 +82,31 @@ than failing obscurely.
 | `COINPAY_CLIENT_ID` / `COINPAY_CLIENT_SECRET` | CoinPay OAuth client |
 | `RESEND_API_KEY` | Sends the magic link. **Without it the link is logged, not sent** — the loud fallback exists so local development needs no credentials, but a production deploy without it means nobody can sign in by email. |
 | `MAIL_FROM` | Sender identity, defaults to `login@bufferoverride.com` |
+| `TRUSTED_HOSTS` | Extra hosts the app may treat as its own origin, comma-separated. Optional. |
+
+## Which origin is used where
+
+Two different origins, deliberately:
+
+- **Security-critical origins are taken from the request** — the WebAuthn
+  `rpID` and expected origin, the magic-link URL, the OAuth `redirect_uri`, and
+  the `Secure` flag on cookies. A credential registered on one host cannot be
+  asserted on another, and a sign-in link must land on the host the person is
+  already using, so none of these can come from a static canonical value.
+- **Canonical/SEO URLs stay on `PUBLIC_BASE_URL`** — JSON-LD, the sitemap, the
+  feeds and MCP citations. These must name one host, or a crawler reaching the
+  app on a secondary domain will index that one instead.
+
+The Host header is attacker-controlled, so a request origin is only trusted
+when its host is on an allowlist: `PUBLIC_BASE_URL`'s own host, anything in
+`TRUSTED_HOSTS`, the platform `*.up.railway.app` deploy host, and localhost.
+Anything else silently falls back to the canonical origin. Without that check,
+`POST /v1/auth/magic` with a forged `Host` would email a working sign-in link
+pointing at the attacker's server — the classic host-header-injection bug.
+
+One implementation note: `Host` is a forbidden header name on a fetch
+`Request`, so Hono never exposes it. The node adapter folds it into the request
+URL, which is where it has to be read back from.
 
 ## Session
 

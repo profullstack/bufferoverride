@@ -1,13 +1,18 @@
 import { randomBytes } from 'node:crypto';
-import { db, env } from '@bufferoverride/db';
+import { db } from '@bufferoverride/db';
+import { canonicalOrigin } from './origin.ts';
 import { actorById, type Actor } from './actors.ts';
 import { daysFromNow, hashToken, isExpired, newToken } from './tokens.ts';
 
 export const SESSION_COOKIE = 'bo_session';
 const SESSION_DAYS = 30;
 
-export function sessionCookie(token: string, maxAgeDays = SESSION_DAYS): string {
-  const secure = (env('PUBLIC_BASE_URL') ?? '').startsWith('https://') ? '; Secure' : '';
+export function sessionCookie(
+  token: string,
+  maxAgeDays = SESSION_DAYS,
+  origin = canonicalOrigin(),
+): string {
+  const secure = origin.startsWith('https://') ? '; Secure' : '';
   // Lax rather than Strict: the magic link and the OAuth callback are both
   // top-level navigations arriving from another origin, and Strict would drop
   // the cookie on exactly those hops.
@@ -16,8 +21,8 @@ export function sessionCookie(token: string, maxAgeDays = SESSION_DAYS): string 
   }`;
 }
 
-export function clearedSessionCookie(): string {
-  const secure = (env('PUBLIC_BASE_URL') ?? '').startsWith('https://') ? '; Secure' : '';
+export function clearedSessionCookie(origin = canonicalOrigin()): string {
+  const secure = origin.startsWith('https://') ? '; Secure' : '';
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=0`;
 }
 

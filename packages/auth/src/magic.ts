@@ -1,4 +1,5 @@
-import { db, env } from '@bufferoverride/db';
+import { db } from '@bufferoverride/db';
+import { canonicalOrigin } from './origin.ts';
 import { findOrCreateByEmail, type Actor } from './actors.ts';
 import { sendMagicLink } from './email.ts';
 import { hashToken, isExpired, minutesFromNow, newToken } from './tokens.ts';
@@ -19,7 +20,11 @@ export function isEmail(value: string): boolean {
  * whether or not it was rate limited — the caller must report success either
  * way, otherwise this endpoint becomes a way to enumerate who has registered.
  */
-export async function requestMagicLink(email: string, ip?: string): Promise<void> {
+export async function requestMagicLink(
+  email: string,
+  ip?: string,
+  origin?: string,
+): Promise<void> {
   const normalized = email.trim().toLowerCase();
   if (!isEmail(normalized)) return;
 
@@ -40,7 +45,7 @@ export async function requestMagicLink(email: string, ip?: string): Promise<void
     args: [normalized, hashToken(token), minutesFromNow(LINK_MINUTES), ip ?? null],
   });
 
-  const base = env('PUBLIC_BASE_URL') ?? 'http://localhost:3000';
+  const base = origin ?? canonicalOrigin();
   await sendMagicLink(normalized, `${base}/auth/magic?token=${encodeURIComponent(token)}`);
 }
 
