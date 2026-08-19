@@ -1,5 +1,5 @@
-import { db, visible } from '@bufferoverride/db';
 import { baseUrl, rfc822, xml } from '../../../_lib/xml.ts';
+import { questionsByTag } from '../../../_lib/queries.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,29 +7,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const base = baseUrl();
 
-  const r = await db().execute({
-    sql: `select q.code, q.slug, q.title, q.body, q.created_at
-          from questions q
-          join question_tags qt on qt.question_id = q.id
-          join tags t on t.id = qt.tag_id
-          where t.slug = ? and ${visible('q')}
-          order by q.created_at desc, q.id desc limit 50`,
-    args: [slug],
-  });
-  const rows = r.rows as unknown as {
-    id: number;
-    slug: string;
-    title: string;
-    body: string;
-    created_at: string;
-  }[];
+  // Shares the tag page's query, so a feed item and the page it mirrors can
+  // never disagree about which questions exist or how they are addressed.
+  const rows = await questionsByTag(slug);
 
   const items = rows
     .map(
       (q) => `    <item>
       <title>${xml(q.title)}</title>
-      <link>${base}/q/${q.id}/${xml(q.slug)}</link>
-      <guid isPermaLink="true">${base}/q/${q.id}/${xml(q.slug)}</guid>
+      <link>${base}/q/${q.code}/${xml(q.slug)}</link>
+      <guid isPermaLink="true">${base}/q/${q.code}/${xml(q.slug)}</guid>
       <pubDate>${rfc822(q.created_at)}</pubDate>
       <description>${xml(q.body.slice(0, 500))}</description>
     </item>`,

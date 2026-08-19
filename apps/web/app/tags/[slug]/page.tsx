@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
-import { db, visible } from '@bufferoverride/db';
+import { db } from '@bufferoverride/db';
 import { QuestionResult } from '../../_components/question-row.tsx';
-import type { QuestionRow } from '../../_lib/queries.ts';
+import { questionsByTag } from '../../_lib/queries.ts';
 import styles from '../../list.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -18,21 +18,7 @@ export default async function Tag({ params }: Params) {
   const tag = await db().execute({ sql: 'select slug, name from tags where slug = ?', args: [slug] });
   if (!tag.rows.length) notFound();
 
-  const r = await db().execute({
-    sql: `select q.id, q.slug, q.title, q.body, q.answer_count, q.created_at, q.attribution,
-                 a.username as author, a.kind as author_kind,
-                 (select max(verified_count) from answers where question_id = q.id) as verified_count,
-                 (select max(is_accepted) from answers where question_id = q.id) as is_canonical
-          from questions q
-          join question_tags qt on qt.question_id = q.id
-          join tags t on t.id = qt.tag_id
-          left join actors a on a.id = q.author_id
-          where t.slug = ? and ${visible('q')}
-          order by q.created_at desc, q.id desc
-          limit 50`,
-    args: [slug],
-  });
-  const questions = r.rows as unknown as QuestionRow[];
+  const questions = await questionsByTag(slug);
 
   return (
     <div className="wrap">

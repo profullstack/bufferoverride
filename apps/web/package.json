@@ -6,7 +6,8 @@
   "scripts": {
     "build": "next build",
     "start": "next start",
-    "dev": "next dev"
+    "dev": "next dev",
+    "test": "node --test test/*.test.ts"
   },
   "dependencies": {
     "@bufferoverride/db": "workspace:*",

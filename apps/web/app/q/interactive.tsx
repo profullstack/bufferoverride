@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { ArrowUpIcon, CheckIcon } from '@bufferoverride/ui';
 import { renderMarkdown } from '@bufferoverride/core/markdown';
 import { CopyMarkdown } from '../_components/copy-markdown.tsx';
@@ -382,147 +382,275 @@ function Edited({ at }: { at: string | null }) {
 }
 
 /**
- * The question body, plus its author's own controls.
+ * Editing your own post, split across the article that displays it.
  *
- * The body renders here rather than on the page so that opening the editor can
- * replace it in place — an editor stacked under a copy of what you are editing
- * is how you end up fixing the wrong paragraph.
+ * The editor has to replace the body, and the buttons that open it belong down
+ * in the footer beside Flag — that is where a reader's eye already goes for the
+ * vote, the comment and the report. Two places, one piece of state, so the
+ * state lives in a provider wrapping the whole article and the two halves read
+ * it from context. The alternative, moving the article's markup into a client
+ * component so it could hold the state, would ship the whole page to the
+ * browser to move two buttons.
+ *
+ * Question and answer share this: they differ in three fields and an endpoint,
+ * and keeping two near-identical copies is how one of them quietly stops
+ * matching the other.
  */
-export function EditableQuestion({
-  code,
-  title,
-  body,
-  tags,
-  editedAt,
-  canEdit,
-}: {
-  code: string;
-  title: string;
-  body: string;
-  tags: string[];
-  editedAt: string | null;
+export type EditTarget =
+  | { kind: 'question'; code: string; title: string; body: string; tags: string[] }
+  | {
+      kind: 'answer';
+      id: number;
+      body: string;
+      validFrom: string | null;
+      validThrough: string | null;
+      verified: number;
+    };
+
+type Draft = { title: string; body: string; tags: string; validFrom: string; validThrough: string };
+
+type EditingValue = {
+  target: EditTarget;
   canEdit: boolean;
+  editedAt: string | null;
+  open: boolean;
+  busy: boolean;
+  error: string | null;
+  findings: { kind: string; line: number; preview: string }[];
+  ack: boolean;
+  draft: Draft;
+  setDraft: (next: Partial<Draft>) => void;
+  setAck: (next: boolean) => void;
+  begin: () => void;
+  cancel: () => void;
+  save: (e: React.FormEvent) => void;
+  remove: () => void;
+};
+
+const EditingContext = createContext<EditingValue | null>(null);
+
+function draftFor(target: EditTarget): Draft {
+  return {
+    title: target.kind === 'question' ? target.title : '',
+    body: target.body,
+    tags: target.kind === 'question' ? target.tags.join(', ') : '',
+    validFrom: target.kind === 'answer' ? (target.validFrom ?? '') : '',
+    validThrough: target.kind === 'answer' ? (target.validThrough ?? '') : '',
+  };
+}
+
+function endpointFor(target: EditTarget): string {
+  return target.kind === 'question' ? `/v1/questions/${target.code}` : `/v1/answers/${target.id}`;
+}
+
+export function ContentEditing({
+  target,
+  canEdit,
+  editedAt,
+  children,
+}: {
+  target: EditTarget;
+  canEdit: boolean;
+  editedAt: string | null;
+  children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(title);
-  const [draft, setDraft] = useState(body);
-  const [draftTags, setDraftTags] = useState(tags.join(', '));
+  const [draft, setDraftState] = useState<Draft>(() => draftFor(target));
   const [findings, setFindings] = useState<{ kind: string; line: number; preview: string }[]>([]);
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Any edit to the text invalidates a previous "publish anyway": the scanner
+  // has not seen what is there now.
+  const setDraft = (next: Partial<Draft>) => {
+    setDraftState((current) => ({ ...current, ...next }));
+    if (next.body !== undefined) setAck(false);
+  };
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch(`/v1/questions/${code}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        title: draftTitle,
-        body: draft,
-        tags: draftTags.split(',').map((t) => t.trim()).filter(Boolean),
-        acknowledgeSecrets: ack,
-      }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (res.status === 401) return toLogin();
-    if (res.status === 409 && json.error === 'secrets_detected') {
-      setFindings(json.findings ?? []);
+
+    const payload =
+      target.kind === 'question'
+        ? {
+            title: draft.title,
+            body: draft.body,
+            tags: draft.tags.split(',').map((t) => t.trim()).filter(Boolean),
+            acknowledgeSecrets: ack,
+          }
+        : {
+            body: draft.body,
+            validFrom: draft.validFrom,
+            validThrough: draft.validThrough,
+            acknowledgeSecrets: ack,
+          };
+
+    try {
+      const res = await fetch(endpointFor(target), {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 401) return toLogin();
+      if (res.status === 409 && json.error === 'secrets_detected') {
+        setFindings(json.findings ?? []);
+        setBusy(false);
+        return;
+      }
+      if (!res.ok) {
+        setError(json.errors?.[0]?.message ?? json.message ?? 'That could not be saved.');
+        setBusy(false);
+        return;
+      }
+      // A retitle moves the slug, and the <h1> and the URL both sit outside
+      // this component; reloading is the honest way to show the whole page
+      // agreeing with what was just saved.
+      if (target.kind === 'question') window.location.href = json.data.url;
+      else window.location.reload();
+    } catch {
+      setError('Could not reach the server.');
       setBusy(false);
-      return;
     }
-    if (!res.ok) {
-      setError(json.errors?.[0]?.message ?? json.message ?? 'That could not be saved.');
-      setBusy(false);
-      return;
-    }
-    // The title is in the URL slug and the <h1> above; a reload is the honest
-    // way to show the whole page agreeing with what was just saved.
-    window.location.href = json.data.url;
   }
 
   async function remove() {
-    if (!confirmed('question')) return;
+    const what = target.kind === 'question' ? 'question' : 'answer';
+    if (!confirmed(what)) return;
     setBusy(true);
-    const res = await send(`/v1/questions/${code}`, 'DELETE');
+    const res = await send(endpointFor(target), 'DELETE');
     if (res.ok) {
-      window.location.href = '/questions';
+      if (target.kind === 'question') window.location.href = '/questions';
+      else window.location.reload();
       return;
     }
     setError(res.message);
     setBusy(false);
   }
 
-  if (!open) {
-    return (
-      <>
-        <Body source={body} />
-        {canEdit ? (
-          <div className={styles.ownerBar}>
-            <Edited at={editedAt} />
-            <span className={styles.spacer} />
-            {error ? <span className={styles.errInline}>{error}</span> : null}
-            <button type="button" className={styles.action} onClick={() => setOpen(true)}>
-              Edit
-            </button>
-            <button
-              type="button"
-              className={`${styles.action} ${styles.danger}`}
-              onClick={remove}
-              disabled={busy}
-            >
-              Delete
-            </button>
-          </div>
-        ) : (
-          <div className={styles.ownerBar}>
-            <Edited at={editedAt} />
-          </div>
-        )}
-      </>
-    );
-  }
+  return (
+    <EditingContext.Provider
+      value={{
+        target,
+        canEdit,
+        editedAt,
+        open,
+        busy,
+        error,
+        findings,
+        ack,
+        draft,
+        setDraft,
+        setAck,
+        begin: () => setOpen(true),
+        cancel: () => {
+          setDraftState(draftFor(target));
+          setFindings([]);
+          setError(null);
+          setOpen(false);
+        },
+        save,
+        remove,
+      }}
+    >
+      {children}
+    </EditingContext.Provider>
+  );
+}
+
+function useEditing(): EditingValue {
+  const value = useContext(EditingContext);
+  if (!value) throw new Error('EditableBody and OwnerActions must sit inside ContentEditing');
+  return value;
+}
+
+/** The post as written, or the editor that replaces it. */
+export function EditableBody() {
+  const { target, open, draft, setDraft, setAck, ack, findings, busy, error, save, cancel } =
+    useEditing();
+
+  if (!open) return <Body source={target.body} />;
 
   return (
     <form className={styles.panel} onSubmit={save}>
-      <span className={styles.panelTitle}>Edit your question</span>
-      <p className={styles.hint}>
-        Every revision is kept and shown in the history. Correct it rather than deleting and
-        reposting — the answers below are replies to this text.
-      </p>
+      <span className={styles.panelTitle}>
+        {target.kind === 'question' ? 'Edit your question' : 'Edit your answer'}
+      </span>
+      {target.kind === 'answer' && target.verified > 0 ? (
+        <p className={styles.hint}>
+          {target.verified} {target.verified === 1 ? 'person has' : 'people have'} reproduced this
+          in their own environment. Those runs stay on the record and this edit is timestamped, so
+          a reader can see the text moved after them — rewrite it into something they did not test
+          and that is what the page will say.
+        </p>
+      ) : (
+        <p className={styles.hint}>
+          Every revision is kept and shown in the history. Correct it rather than deleting and
+          reposting — what is below is a reply to this text.
+        </p>
+      )}
       {error ? <div className={styles.err}>{error}</div> : null}
-      <input
-        className={styles.input}
-        value={draftTitle}
-        onChange={(e) => setDraftTitle(e.target.value)}
-        aria-label="Title"
-        required
-      />
+
+      {target.kind === 'question' ? (
+        <input
+          className={styles.input}
+          value={draft.title}
+          onChange={(e) => setDraft({ title: e.target.value })}
+          aria-label="Title"
+          required
+        />
+      ) : null}
+
       <MarkdownArea
         className={styles.textarea}
-        value={draft}
-        ariaLabel="Question body"
-        onChange={(next) => {
-          setDraft(next);
-          setAck(false);
-        }}
+        value={draft.body}
+        ariaLabel={target.kind === 'question' ? 'Question body' : 'Answer body'}
+        onChange={(next) => setDraft({ body: next })}
         required
       />
-      <input
-        className={styles.input}
-        value={draftTags}
-        onChange={(e) => setDraftTags(e.target.value)}
-        placeholder="tags, comma separated"
-        aria-label="Tags"
-      />
+
+      {target.kind === 'question' ? (
+        <input
+          className={styles.input}
+          value={draft.tags}
+          onChange={(e) => setDraft({ tags: e.target.value })}
+          placeholder="tags, comma separated"
+          aria-label="Tags"
+        />
+      ) : (
+        <div className={styles.row}>
+          <input
+            className={styles.input}
+            style={{ maxWidth: 200 }}
+            value={draft.validFrom}
+            onChange={(e) => setDraft({ validFrom: e.target.value })}
+            placeholder="valid from e.g. bun 1.1"
+            aria-label="Valid from"
+          />
+          <input
+            className={styles.input}
+            style={{ maxWidth: 200 }}
+            value={draft.validThrough}
+            onChange={(e) => setDraft({ validThrough: e.target.value })}
+            placeholder="valid through e.g. bun 1.3"
+            aria-label="Valid through"
+          />
+        </div>
+      )}
+
       <SecretsNotice findings={findings} ack={ack} onAck={setAck} />
       <div className={styles.row}>
-        <button className={styles.submit} type="submit" disabled={busy || (findings.length > 0 && !ack)}>
+        <button
+          className={styles.submit}
+          type="submit"
+          disabled={busy || (findings.length > 0 && !ack)}
+        >
           {busy ? 'Saving…' : 'Save changes'}
         </button>
-        <button type="button" className={styles.action} onClick={() => setOpen(false)}>
+        <button type="button" className={styles.action} onClick={cancel}>
           Cancel
         </button>
       </div>
@@ -530,158 +658,38 @@ export function EditableQuestion({
   );
 }
 
-/** The same shape for an answer, plus the version range it claims to hold for. */
-export function EditableAnswer({
-  answerId,
-  body,
-  validFrom,
-  validThrough,
-  editedAt,
-  verified,
-  canEdit,
-}: {
-  answerId: number;
-  body: string;
-  validFrom: string | null;
-  validThrough: string | null;
-  editedAt: string | null;
-  verified: number;
-  canEdit: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(body);
-  const [from, setFrom] = useState(validFrom ?? '');
-  const [through, setThrough] = useState(validThrough ?? '');
-  const [findings, setFindings] = useState<{ kind: string; line: number; preview: string }[]>([]);
-  const [ack, setAck] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+/**
+ * Edit and Delete, for the footer row.
+ *
+ * The "edited" marker shows for everyone, not only the author: that a post was
+ * revised after people read it is a fact about the post, not a private note to
+ * whoever wrote it.
+ */
+export function OwnerActions() {
+  const { canEdit, editedAt, open, busy, error, begin, remove } = useEditing();
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const res = await fetch(`/v1/answers/${answerId}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        body: draft,
-        validFrom: from,
-        validThrough: through,
-        acknowledgeSecrets: ack,
-      }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (res.status === 401) return toLogin();
-    if (res.status === 409 && json.error === 'secrets_detected') {
-      setFindings(json.findings ?? []);
-      setBusy(false);
-      return;
-    }
-    if (!res.ok) {
-      setError(json.errors?.[0]?.message ?? json.message ?? 'That could not be saved.');
-      setBusy(false);
-      return;
-    }
-    window.location.reload();
-  }
-
-  async function remove() {
-    if (!confirmed('answer')) return;
-    setBusy(true);
-    const res = await send(`/v1/answers/${answerId}`, 'DELETE');
-    if (res.ok) {
-      window.location.reload();
-      return;
-    }
-    setError(res.message);
-    setBusy(false);
-  }
-
-  if (!open) {
-    return (
-      <>
-        <Body source={body} />
-        {canEdit ? (
-          <div className={styles.ownerBar}>
-            <Edited at={editedAt} />
-            <span className={styles.spacer} />
-            {error ? <span className={styles.errInline}>{error}</span> : null}
-            <button type="button" className={styles.action} onClick={() => setOpen(true)}>
-              Edit
-            </button>
-            <button
-              type="button"
-              className={`${styles.action} ${styles.danger}`}
-              onClick={remove}
-              disabled={busy}
-            >
-              Delete
-            </button>
-          </div>
-        ) : (
-          <div className={styles.ownerBar}>
-            <Edited at={editedAt} />
-          </div>
-        )}
-      </>
-    );
-  }
+  if (!canEdit) return editedAt ? <Edited at={editedAt} /> : null;
 
   return (
-    <form className={styles.panel} onSubmit={save}>
-      <span className={styles.panelTitle}>Edit your answer</span>
-      {verified > 0 ? (
-        <p className={styles.hint}>
-          {verified} {verified === 1 ? 'person has' : 'people have'} reproduced this in their own
-          environment. Those runs stay on the record and the edit is timestamped, so a reader can
-          see the text moved after them — rewrite it into something they did not test and that is
-          what the page will say.
-        </p>
-      ) : (
-        <p className={styles.hint}>
-          Every revision is kept and shown in the history. Keep the version range honest.
-        </p>
+    <>
+      <Edited at={editedAt} />
+      {error ? <span className={styles.errInline}>{error}</span> : null}
+      {open ? null : (
+        <>
+          <button type="button" className={styles.action} onClick={begin}>
+            Edit
+          </button>
+          <button
+            type="button"
+            className={`${styles.action} ${styles.danger}`}
+            onClick={remove}
+            disabled={busy}
+          >
+            Delete
+          </button>
+        </>
       )}
-      {error ? <div className={styles.err}>{error}</div> : null}
-      <MarkdownArea
-        className={styles.textarea}
-        value={draft}
-        ariaLabel="Answer body"
-        onChange={(next) => {
-          setDraft(next);
-          setAck(false);
-        }}
-        required
-      />
-      <div className={styles.row}>
-        <input
-          className={styles.input}
-          style={{ maxWidth: 200 }}
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          placeholder="valid from e.g. bun 1.1"
-          aria-label="Valid from"
-        />
-        <input
-          className={styles.input}
-          style={{ maxWidth: 200 }}
-          value={through}
-          onChange={(e) => setThrough(e.target.value)}
-          placeholder="valid through e.g. bun 1.3"
-          aria-label="Valid through"
-        />
-      </div>
-      <SecretsNotice findings={findings} ack={ack} onAck={setAck} />
-      <div className={styles.row}>
-        <button className={styles.submit} type="submit" disabled={busy || (findings.length > 0 && !ack)}>
-          {busy ? 'Saving…' : 'Save changes'}
-        </button>
-        <button type="button" className={styles.action} onClick={() => setOpen(false)}>
-          Cancel
-        </button>
-      </div>
-    </form>
+    </>
   );
 }
 

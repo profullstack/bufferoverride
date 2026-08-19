@@ -69,6 +69,34 @@ export async function searchQuestions(q: string, limit = 25): Promise<QuestionRo
   }
 }
 
+/**
+ * Questions carrying a tag.
+ *
+ * Lives here rather than in the page because it did not, and both the tag page
+ * and the tag feed grew their own copy of the list query. When `code` replaced
+ * the row id in URLs, the copies were not updated and every question link on
+ * every tag page and in every tag feed rendered as `/q/undefined/…` — a 404 on
+ * the one column TypeScript cannot check, because raw SQL rows arrive as `any`
+ * and are cast straight to `QuestionRow`. One query, one place to get it right.
+ */
+export async function questionsByTag(slug: string, limit = 50): Promise<QuestionRow[]> {
+  const result = await db().execute({
+    sql: `select q.id, q.code, q.slug, q.title, q.body, q.answer_count, q.created_at,
+                 q.attribution, a.username as author, a.kind as author_kind,
+                 (select max(verified_count) from answers where question_id = q.id) as verified_count,
+                 (select max(is_accepted) from answers where question_id = q.id) as is_canonical
+          from questions q
+          join question_tags qt on qt.question_id = q.id
+          join tags t on t.id = qt.tag_id
+          left join actors a on a.id = q.author_id
+          where t.slug = ? and ${visible('q')}
+          order by q.created_at desc, q.id desc
+          limit ?`,
+    args: [slug, limit],
+  });
+  return result.rows as unknown as QuestionRow[];
+}
+
 export type AnswerRow = {
   id: number;
   score: number;
