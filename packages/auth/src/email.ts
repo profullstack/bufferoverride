@@ -39,4 +39,9 @@ export async function sendMagicLink(to: string, url: string): Promise<void> {
     console.error('[auth] resend rejected the message:', res.status, await res.text());
     throw new Error('email_send_failed');
   }
+
+  // Log the provider id, never the address or the link: enough to trace a
+  // delivery in Resend, not enough to sign in as anybody.
+  const sent = (await res.json().catch(() => ({}))) as { id?: string };
+  console.log(`[auth] magic link sent, resend id ${sent.id ?? 'unknown'}`);
 }
