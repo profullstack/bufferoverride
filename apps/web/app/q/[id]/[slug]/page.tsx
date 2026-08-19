@@ -16,8 +16,9 @@ import { daysAgo, getQuestion, type AnswerRow } from '../../../_lib/queries.ts';
 import {
   AcceptControl,
   AnswerForm,
-  EditableAnswer,
-  EditableQuestion,
+  ContentEditing,
+  EditableBody,
+  OwnerActions,
   CanonicalEditor,
   ChallengeControl,
   CommentThread,
@@ -350,7 +351,7 @@ export default async function QuestionPage({ params }: Params) {
                     />
                   )}
                   <span className={styles.spacer} />
-                  <Button href={`/q/${q.id}/${q.slug}/canonical`} variant="outline" size="sm">
+                  <Button href={`/q/${q.code}/${q.slug}/canonical`} variant="outline" size="sm">
                     History
                   </Button>
                   <CanonicalEditor
@@ -365,6 +366,11 @@ export default async function QuestionPage({ params }: Params) {
           ) : null}
 
           <article className={styles.answer}>
+            <ContentEditing
+              target={{ kind: 'question', code: q.code, title: q.title, body: q.body, tags }}
+              editedAt={(q as unknown as { edited_at: string | null }).edited_at}
+              canEdit={mine((q as unknown as { author_id: string }).author_id)}
+            >
             <div className={styles.answerHead}>
               <IdentityChip
                 name={q.author ?? 'unknown'}
@@ -374,14 +380,7 @@ export default async function QuestionPage({ params }: Params) {
               <span className={styles.headSpacer} />
               <CopyMarkdown source={q.body} html={renderMarkdown(q.body)} />
             </div>
-            <EditableQuestion
-              code={q.code}
-              title={q.title}
-              body={q.body}
-              tags={tags}
-              editedAt={(q as unknown as { edited_at: string | null }).edited_at}
-              canEdit={mine((q as unknown as { author_id: string }).author_id)}
-            />
+            <EditableBody />
             <div className={styles.env}>
               <div className={styles.envCell}>
                 <span className={styles.envKey}>ASKED</span>
@@ -419,8 +418,10 @@ export default async function QuestionPage({ params }: Params) {
                 ownContent={isAsker}
               />
               <span className={styles.spacer} />
+              <OwnerActions />
               <FlagControl contentType="question" contentId={q.id} signedIn={signedIn} />
             </div>
+            </ContentEditing>
             <CommentThread
               contentType="question"
               contentId={q.id}
@@ -463,15 +464,19 @@ export default async function QuestionPage({ params }: Params) {
                 )}
                 {a.is_accepted ? <Badge variant="secondary">accepted</Badge> : null}
               </div>
-              <EditableAnswer
-                answerId={a.id}
-                body={a.body}
-                validFrom={a.valid_from}
-                validThrough={a.valid_through}
+              <ContentEditing
+                target={{
+                  kind: 'answer',
+                  id: a.id,
+                  body: a.body,
+                  validFrom: a.valid_from,
+                  validThrough: a.valid_through,
+                  verified: a.verified_count,
+                }}
                 editedAt={a.edited_at}
-                verified={a.verified_count}
                 canEdit={mine(a.author_id)}
-              />
+              >
+              <EditableBody />
               <div className={styles.validity}>
                 <span className={styles.validityKey}>valid</span>
                 <span>
@@ -494,8 +499,10 @@ export default async function QuestionPage({ params }: Params) {
                 {isAsker ? <AcceptControl answerId={a.id} accepted={a.is_accepted === 1} /> : null}
                 <span className={styles.spacer} />
                 <CopyMarkdown source={a.body} html={renderMarkdown(a.body)} />
+                <OwnerActions />
                 <FlagControl contentType="answer" contentId={a.id} signedIn={signedIn} />
               </div>
+              </ContentEditing>
               <CommentThread
                 contentType="answer"
                 contentId={a.id}

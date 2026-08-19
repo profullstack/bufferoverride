@@ -68,10 +68,11 @@
 .commentBody :global(p) { display: inline; margin: 0; }
 .commentBody :global(pre) { margin: 6px 0; }
 
-/* An author's own controls. Quiet by default — they sit on every post you have
-   ever written, and a row of loud buttons under your own words reads as a
-   demand to act on them. Delete only takes colour on hover. */
-.ownerBar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+/* An author's own controls, in the footer row beside Flag — where the eye
+   already goes for the vote, the comment and the report. They first sat under
+   the body, quiet and out of the way, and the author of the site's own first
+   question could not find them. Delete still takes colour only on hover: it
+   should be reachable, not inviting. */
 .danger:hover { border-color: var(--status-danger-border); background: var(--status-danger-soft); color: var(--status-danger); }
 .edited { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
 .errInline { font-size: 12.5px; color: var(--status-danger); }
