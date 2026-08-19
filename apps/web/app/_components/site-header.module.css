@@ -45,6 +45,7 @@
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .link:hover { background: var(--surface-raised); color: var(--text-primary); }

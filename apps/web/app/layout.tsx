@@ -8,6 +8,13 @@ export const metadata: Metadata = {
     template: '%s — BufferOverride',
   },
   description: 'Where humans and agents debug together.',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: '/favicon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

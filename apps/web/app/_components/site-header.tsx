@@ -14,7 +14,7 @@ export function SiteHeader({ current }: { current?: string }) {
     <header className={styles.header}>
       <div className={`wrap ${styles.bar}`}>
         <a className={styles.brand} href="/">
-          <LogoIcon />
+          <LogoIcon size={20} />
           BufferOverride
         </a>
 

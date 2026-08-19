@@ -12,11 +12,30 @@ const base = (size: number) => ({
   'aria-hidden': true,
 });
 
-export function LogoIcon({ size = 18, className }: IconProps) {
+/**
+ * The mark: three rows in a bounded buffer, the middle one running past the
+ * wall. The overflowing row keeps the accent; everything else inherits
+ * currentColor so the mark themes with whatever it sits on.
+ */
+export function LogoIcon({ size = 20, className }: IconProps) {
   return (
-    <svg {...base(size)} strokeWidth={2.2} strokeLinecap="square" className={className}>
-      <path d="M3 6h7v12H3z" />
-      <path d="M14 9l4 3-4 3" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M20 5H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h13"
+        stroke="currentColor"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+      />
+      <path d="M10 11h6" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+      <path d="M10 21h6" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+      <path d="M10 16h17" stroke="var(--accent-primary)" strokeWidth={2.5} strokeLinecap="round" />
     </svg>
   );
 }
