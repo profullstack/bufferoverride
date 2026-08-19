@@ -37,6 +37,8 @@ ${bold('CAPTURE A FAILURE')}
 ${bold('EVERYTHING ELSE')}
   bo search "worker exited before finishing"
   bo get 1842
+  bo get 1842 --markdown          The whole thread as markdown, on stdout
+  bo get 1842 --copy              The same document, on the clipboard
   bo ask --title "..." --tag bun
   bo answer 1842 --file answer.md
   bo verify 1842 --answer 3921 -- pnpm test
@@ -45,6 +47,8 @@ ${bold('EVERYTHING ELSE')}
 
 ${bold('OPTIONS')}
   --json                 Machine-readable output on stdout
+  --markdown             Markdown on stdout, ready to paste
+  --copy                 Copy that markdown to the system clipboard
   --dry-run              Do the work, publish nothing
   -y, --yes              Do not prompt; take the default
   --url <origin>         Point at another deployment

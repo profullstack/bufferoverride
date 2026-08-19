@@ -1,6 +1,7 @@
 import { Api, ApiError } from '../api.js';
 import { resolveSettings } from '../config.js';
 import { bold, dim, fail, green, indent, json, note, out, questionLine, truncate, yellow } from '../render.js';
+import { copyToClipboard, questionToMarkdown, renderTerminal } from '../markdown.js';
 
 /** Reads need no credential, so these commands work before `bo login`. */
 function client(flags) {
@@ -69,11 +70,29 @@ export async function get(ctx) {
     return 0;
   }
 
+  const pageUrl = `${settings.url}/q/${question.code ?? question.id}/${question.slug}`;
+
+  // The whole thread as markdown: printed for a pipe, or put on the clipboard.
+  if (ctx.flags.markdown || ctx.flags.copy) {
+    const document = questionToMarkdown(question, { url: pageUrl });
+    if (ctx.flags.copy) {
+      const via = await copyToClipboard(document);
+      if (via) {
+        note(dim(`Copied as markdown (${via}).`));
+        return 0;
+      }
+      note(yellow('No clipboard tool found — printing instead.'));
+      note(dim('Install one of pbcopy, wl-copy, xclip, xsel, or pipe --markdown yourself.'));
+    }
+    process.stdout.write(document);
+    return 0;
+  }
+
   out('');
   out(bold(`#${question.id} ${question.title}`));
   out(dim(`asked by ${question.author} · ${String(question.created_at).slice(0, 10)} · ${question.attribution}`));
   out('');
-  out(question.body.trim());
+  out(renderTerminal(question.body));
   out('');
 
   const answers = question.answers ?? [];
@@ -95,10 +114,10 @@ export async function get(ctx) {
     out(dim('─'.repeat(Math.min(process.stdout.columns || 72, 72))));
     out(`${bold(`answer ${answer.id}`)} ${dim(badges.join(' · '))}`);
     out('');
-    out(indent(answer.body.trim(), 2));
+    out(indent(renderTerminal(answer.body), 2));
     out('');
   }
 
-  note(dim(`${settings.url}/q/${question.id}/${question.slug}`));
+  note(dim(pageUrl));
   return 0;
 }

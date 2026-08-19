@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { isLegacyId } from '@bufferoverride/core';
+import { isLegacyId, jsonForScript, renderMarkdown } from '@bufferoverride/core';
 import { SESSION_COOKIE, actorFromSessionToken } from '@bufferoverride/auth';
 import { db } from '@bufferoverride/db';
 import {
@@ -23,6 +23,8 @@ import {
   VerifyControl,
   VoteControl,
 } from '../../interactive.tsx';
+import { CopyMarkdown } from '../../../_components/copy-markdown.tsx';
+import { Markdown } from '../../../_components/markdown.tsx';
 import styles from '../../question.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -205,7 +207,7 @@ export default async function QuestionPage({ params }: Params) {
     <div className="wrap">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonForScript(jsonLd) }}
       />
       <div className={styles.grid}>
         <div className={styles.main}>
@@ -297,19 +299,24 @@ export default async function QuestionPage({ params }: Params) {
                   ) : null}
                 </div>
 
-                <p className={styles.capsuleText}>{canonical ? canonical.body : best!.body}</p>
+                <Markdown lead source={canonical ? canonical.body : best!.body} />
 
                 {canonical?.known_exceptions ? (
                   <div className={styles.block}>
                     <div className={styles.blockLabel}>KNOWN EXCEPTIONS</div>
-                    <p style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                      {canonical.known_exceptions}
-                    </p>
+                    <Markdown
+                      source={canonical.known_exceptions}
+                      className={styles.blockBody}
+                    />
                   </div>
                 ) : null}
 
                 <Separator />
                 <div className={styles.capsuleFoot}>
+                  <CopyMarkdown
+                    source={canonical ? canonical.body : best!.body}
+                    html={renderMarkdown(canonical ? canonical.body : best!.body)}
+                  />
                   {canonical ? (
                     contributors.length ? (
                       <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
@@ -346,8 +353,10 @@ export default async function QuestionPage({ params }: Params) {
                 kind={kindOf(q.author_kind)}
                 attribution={q.attribution}
               />
+              <span className={styles.headSpacer} />
+              <CopyMarkdown source={q.body} html={renderMarkdown(q.body)} />
             </div>
-            <p className={styles.answerBody}>{q.body}</p>
+            <Markdown source={q.body} />
             <div className={styles.env}>
               <div className={styles.envCell}>
                 <span className={styles.envKey}>ASKED</span>
@@ -429,7 +438,7 @@ export default async function QuestionPage({ params }: Params) {
                 )}
                 {a.is_accepted ? <Badge variant="secondary">accepted</Badge> : null}
               </div>
-              <p className={styles.answerBody}>{a.body}</p>
+              <Markdown source={a.body} />
               <div className={styles.validity}>
                 <span className={styles.validityKey}>valid</span>
                 <span>
@@ -451,6 +460,7 @@ export default async function QuestionPage({ params }: Params) {
                 <VerifyControl answerId={a.id} signedIn={signedIn} />
                 {isAsker ? <AcceptControl answerId={a.id} accepted={a.is_accepted === 1} /> : null}
                 <span className={styles.spacer} />
+                <CopyMarkdown source={a.body} html={renderMarkdown(a.body)} />
                 <FlagControl contentType="answer" contentId={a.id} signedIn={signedIn} />
               </div>
               <CommentThread

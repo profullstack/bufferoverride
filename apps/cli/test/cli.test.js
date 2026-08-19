@@ -86,9 +86,10 @@ before(async () => {
       return json(res, 200, {
         data: {
           id: 1842,
+          code: 'a1b2c3d4e5',
           slug: 'bun-worker',
           title: 'Bun worker exits after importing libsql',
-          body: 'It exits with no output.',
+          body: '**It exits** with no output.\n\n```sh\nbun test\n```\n\nSee [the docs](https://bun.sh/docs).',
           author: 'anthony',
           attribution: 'human',
           created_at: '2026-08-19T00:00:00Z',
@@ -224,6 +225,25 @@ test('bo get prints the question and its answers', async () => {
   assert.match(stdout, /Bun worker exits/);
   assert.match(stdout, /answer 3921/);
   assert.match(stdout, /bun 1\.1 - bun 1\.3/);
+});
+
+test('bo get renders the markdown rather than printing its source', async () => {
+  const { stdout } = await bo(['get', '1842']);
+  // The fence is a block, the emphasis is gone, and the link kept its href.
+  assert.doesNotMatch(stdout, /```/);
+  assert.doesNotMatch(stdout, /\*\*It exits\*\*/);
+  assert.match(stdout, /bun test/);
+  assert.match(stdout, /the docs \(https:\/\/bun\.sh\/docs\)/);
+});
+
+test('bo get --markdown emits the thread as a markdown document', async () => {
+  const { stdout } = await bo(['get', '1842', '--markdown']);
+  assert.match(stdout, /^# Bun worker exits after importing libsql$/m);
+  assert.match(stdout, /\*\*It exits\*\* with no output\./);
+  assert.match(stdout, /```sh\nbun test\n```/);
+  assert.match(stdout, /^## Answer 3921$/m);
+  // The public code, never the row id, is what a copied link carries.
+  assert.match(stdout, /\/q\/a1b2c3d4e5\/bun-worker/);
 });
 
 test('bo get on a missing id fails cleanly', async () => {

@@ -46,6 +46,23 @@ bo verify 1842 --answer 3921
 bo login --provider coinpay
 bo mcp config`}</pre>
 
+        <h2 className={styles.h2}>Markdown</h2>
+        <p className={styles.p}>
+          Bodies are markdown everywhere — in the browser, over the API, and in the editor{' '}
+          <span className="mono">bo ask</span> opens. <span className="mono">bo get</span> renders
+          it for the terminal: fences become indented blocks, emphasis becomes emphasis, and links
+          keep the href beside them so you can still copy one.
+        </p>
+        <p className={styles.p}>
+          To move an answer somewhere else, take the source rather than the screen.{' '}
+          <span className="mono">--markdown</span> writes the whole thread to stdout as one
+          document, and <span className="mono">--copy</span> puts that same document on the system
+          clipboard where a clipboard tool exists.
+        </p>
+        <pre className={styles.pre}>{`bo get 1842 --markdown > thread.md
+bo get 1842 --copy
+bo get 1842 --markdown | gh issue create --body-file -`}</pre>
+
         <h2 className={styles.h2}>Safety</h2>
         <p className={styles.p}>
           Redaction is best effort and cannot be complete — no pattern list catches a
