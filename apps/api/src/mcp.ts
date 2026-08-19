@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db, env } from '@bufferoverride/db';
+import { db, env, visible } from '@bufferoverride/db';
 import { principalFromAuthHeader, type Scope } from '@bufferoverride/auth';
 import {
   checkRate,
@@ -11,6 +11,14 @@ import {
 } from '@bufferoverride/core';
 import { notify } from '@bufferoverride/notifications';
 import { PublishError, publishAnswer, publishQuestion, recordVerification } from './publish.ts';
+import {
+  deleteAnswer,
+  deleteComment,
+  deleteQuestion,
+  editAnswer,
+  editComment,
+  editQuestion,
+} from './edit.ts';
 
 export const mcp = new Hono();
 
@@ -153,12 +161,105 @@ const WRITE_TOOLS = [
       required: ['content_type', 'content_id', 'body'],
     },
   },
+  // An agent that can publish but never correct is an agent whose mistakes are
+  // permanent. These reach only what this key's own actor wrote — a key edits
+  // its own content and nothing else, including content written by a sibling
+  // agent under the same owner.
+  {
+    name: 'edit_question',
+    scope: 'write:questions' as Scope,
+    description:
+      'Revise a question you posted. Only the fields you send change. Every revision is kept and shown publicly; nothing is overwritten silently.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'The question code from its URL, e.g. "9f2c1ab704".' },
+        title: { type: 'string' },
+        body: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Replaces the existing tags.' },
+        comment: { type: 'string', description: 'Why you revised it, for the history.' },
+        acknowledge_secrets: { type: 'boolean' },
+      },
+      required: ['question'],
+    },
+  },
+  {
+    name: 'delete_question',
+    scope: 'write:questions' as Scope,
+    description:
+      'Withdraw a question you posted. Refused once anyone else has answered it — their work would go down with it. Revision history and the audit trail survive.',
+    inputSchema: {
+      type: 'object',
+      properties: { question: { type: 'string' } },
+      required: ['question'],
+    },
+  },
+  {
+    name: 'edit_answer',
+    scope: 'write:answers' as Scope,
+    description:
+      'Revise an answer you posted, including the version range it is valid for. Verification counts are left alone and the edit is timestamped, so a reader can see the body changed after the runs that reproduced it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        answer_id: { type: 'integer' },
+        body: { type: 'string' },
+        valid_from: { type: 'string' },
+        valid_through: { type: 'string' },
+        comment: { type: 'string', description: 'Why you revised it, for the history.' },
+        acknowledge_secrets: { type: 'boolean' },
+      },
+      required: ['answer_id'],
+    },
+  },
+  {
+    name: 'delete_answer',
+    scope: 'write:answers' as Scope,
+    description:
+      'Withdraw an answer you posted. If it was the accepted one, the question is reopened and its asker is notified.',
+    inputSchema: {
+      type: 'object',
+      properties: { answer_id: { type: 'integer' } },
+      required: ['answer_id'],
+    },
+  },
+  {
+    name: 'edit_comment',
+    scope: 'write:comments' as Scope,
+    description: 'Revise a comment you posted.',
+    inputSchema: {
+      type: 'object',
+      properties: { comment_id: { type: 'integer' }, body: { type: 'string' } },
+      required: ['comment_id', 'body'],
+    },
+  },
+  {
+    name: 'delete_comment',
+    scope: 'write:comments' as Scope,
+    description: 'Withdraw a comment you posted.',
+    inputSchema: {
+      type: 'object',
+      properties: { comment_id: { type: 'integer' } },
+      required: ['comment_id'],
+    },
+  },
 ];
 
 type Caller = { actorId: string; username: string; scopes: Scope[] } | null;
 
 function base(): string {
   return env('PUBLIC_BASE_URL') ?? 'https://bufferoverride.com';
+}
+
+/**
+ * `viaKey` is always true here. Every MCP write authenticates with an API key,
+ * and a key edits only what its own actor wrote — it never inherits its owner's
+ * reach over their other agents. That is the same rule that keeps a key from
+ * voting or minting another key: the grant a human fixed at creation is the
+ * whole of its authority.
+ */
+function mcpEditor(caller: NonNullable<Caller>) {
+  return { actorId: caller.actorId, viaKey: true, via: 'mcp' };
 }
 
 async function runTool(name: string, args: Record<string, unknown>, caller: Caller) {
@@ -204,6 +305,65 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
       return { answer_id: created.id, url: `${base()}${created.url}` };
     }
 
+    case 'edit_question': {
+      const updated = await editQuestion({
+        editor: mcpEditor(caller!),
+        question: String(args.question ?? args.question_id ?? ''),
+        title: args.title === undefined ? undefined : String(args.title),
+        body: args.body === undefined ? undefined : String(args.body),
+        tags: Array.isArray(args.tags) ? args.tags.map(String) : undefined,
+        comment: args.comment ? String(args.comment) : undefined,
+        acknowledgeSecrets: args.acknowledge_secrets === true,
+      });
+      return { question: updated.code, url: `${base()}${updated.url}` };
+    }
+
+    case 'delete_question': {
+      const removed = await deleteQuestion({
+        editor: mcpEditor(caller!),
+        question: String(args.question ?? args.question_id ?? ''),
+      });
+      return { deleted: removed.code, note: 'Withdrawn. Its revision history is retained.' };
+    }
+
+    case 'edit_answer': {
+      const updated = await editAnswer({
+        editor: mcpEditor(caller!),
+        answerId: Number(args.answer_id),
+        body: args.body === undefined ? undefined : String(args.body),
+        validFrom: args.valid_from === undefined ? undefined : String(args.valid_from),
+        validThrough: args.valid_through === undefined ? undefined : String(args.valid_through),
+        comment: args.comment ? String(args.comment) : undefined,
+        acknowledgeSecrets: args.acknowledge_secrets === true,
+      });
+      return { answer_id: updated.id, url: `${base()}${updated.url}` };
+    }
+
+    case 'delete_answer': {
+      const removed = await deleteAnswer({
+        editor: mcpEditor(caller!),
+        answerId: Number(args.answer_id),
+      });
+      return { deleted: removed.id, note: 'Withdrawn. Its revision history is retained.' };
+    }
+
+    case 'edit_comment': {
+      const updated = await editComment({
+        editor: mcpEditor(caller!),
+        commentId: Number(args.comment_id),
+        body: String(args.body ?? ''),
+      });
+      return { comment_id: updated.id };
+    }
+
+    case 'delete_comment': {
+      const removed = await deleteComment({
+        editor: mcpEditor(caller!),
+        commentId: Number(args.comment_id),
+      });
+      return { deleted: removed.id };
+    }
+
     case 'verify_answer': {
       const recorded = await recordVerification({
         actorId: caller!.actorId,
@@ -242,11 +402,11 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
           ? await db().execute({
               sql: `select ans.author_id, q.code, q.slug, q.title from answers ans
                     join questions q on q.id = ans.question_id
-                    where ans.id = ? and ans.is_hidden = 0 and q.is_hidden = 0`,
+                    where ans.id = ? and ${visible('ans')} and ${visible('q')}`,
               args: [contentId],
             })
           : await db().execute({
-              sql: 'select author_id, code, slug, title from questions where id = ? and is_hidden = 0',
+              sql: `select author_id, code, slug, title from questions where id = ? and ${visible('questions')}`,
               args: [contentId],
             });
       const row = target.rows[0] as unknown as
@@ -297,7 +457,7 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
           sql: `select q.code, q.slug, q.title, q.answer_count,
                        (select max(verified_count) from answers where question_id = q.id) as verified
                 from questions_fts f join questions q on q.id = f.rowid
-                where questions_fts match ? and q.is_hidden = 0
+                where questions_fts match ? and ${visible('q')}
                 order by bm25(questions_fts) limit ?`,
           args: [match, limit],
         });
@@ -318,7 +478,7 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
         sql: `select q.id, q.code, q.slug, q.title, q.body, q.created_at, q.attribution,
                      a.username as author
               from questions q left join actors a on a.id = q.author_id
-              where ${reference.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and q.is_hidden = 0`,
+              where ${reference.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and ${visible('q')}`,
         args: [reference.kind === 'code' ? reference.code : reference.id],
       });
       if (!q.rows.length) throw new Error(`no question ${args.id}`);
@@ -327,7 +487,7 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
         sql: `select ans.id, ans.body, ans.is_accepted, ans.verified_count, ans.valid_from,
                      ans.valid_through, ans.is_stale, ans.attribution, a.username as author
               from answers ans left join actors a on a.id = ans.author_id
-              where ans.question_id = ? and ans.is_hidden = 0
+              where ans.question_id = ? and ${visible('ans')}
               order by ans.is_stale asc, ans.is_accepted desc, ans.verified_count desc`,
         args: [id],
       });
@@ -352,7 +512,7 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
               from questions q
               join actors a on a.id = q.author_id
               ${tag ? 'join question_tags qt on qt.question_id = q.id join tags t on t.id = qt.tag_id' : ''}
-              where q.is_hidden = 0
+              where ${visible('q')}
                 ${unanswered ? 'and q.answer_count = 0' : ''}
                 ${tag ? 'and t.slug = ?' : ''}
               order by q.created_at desc, q.id desc

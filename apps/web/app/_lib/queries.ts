@@ -1,4 +1,4 @@
-import { db } from '@bufferoverride/db';
+import { db, visible, visibleComment } from '@bufferoverride/db';
 import { ftsAttempts, parseReference } from '@bufferoverride/core';
 
 export type QuestionRow = {
@@ -31,7 +31,7 @@ export async function listQuestions(limit = 25): Promise<QuestionRow[]> {
                  (select max(is_accepted) from answers where question_id = q.id) as is_canonical
           from questions q
           left join actors a on a.id = q.author_id
-          where q.is_hidden = 0
+          where ${visible('q')}
           order by q.created_at desc, q.id desc
           limit ?`,
     args: [limit],
@@ -54,7 +54,7 @@ export async function searchQuestions(q: string, limit = 25): Promise<QuestionRo
             from questions_fts f
             join questions q on q.id = f.rowid
             left join actors a on a.id = q.author_id
-            where questions_fts match ? and q.is_hidden = 0
+            where questions_fts match ? and ${visible('q')}
             order by bm25(questions_fts)
             limit ?`,
         args: [match, limit],
@@ -83,6 +83,7 @@ export type AnswerRow = {
   valid_through: string | null;
   is_stale: number;
   created_at: string;
+  edited_at: string | null;
 };
 
 /**
@@ -97,7 +98,7 @@ export async function getQuestion(reference: string | number, viewerId?: string)
   const question = await db().execute({
     sql: `select q.*, a.username as author, a.kind as author_kind
           from questions q left join actors a on a.id = q.author_id
-          where ${parsed.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and q.is_hidden = 0`,
+          where ${parsed.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and ${visible('q')}`,
     args: [parsed.kind === 'code' ? parsed.code : parsed.id],
   });
   if (!question.rows.length) return null;
@@ -105,11 +106,11 @@ export async function getQuestion(reference: string | number, viewerId?: string)
 
   const answers = await db().execute({
     sql: `select ans.id, ans.body, ans.attribution, ans.is_accepted, ans.verified_count,
-                 ans.valid_from, ans.valid_through, ans.is_stale, ans.created_at,
+                 ans.valid_from, ans.valid_through, ans.is_stale, ans.created_at, ans.edited_at,
                  ans.score, ans.author_id,
                  a.username as author, a.kind as author_kind
           from answers ans left join actors a on a.id = ans.author_id
-          where ans.question_id = ? and ans.is_hidden = 0
+          where ans.question_id = ? and ${visible('ans')}
           order by ans.is_stale asc, ans.is_accepted desc, ans.verified_count desc, ans.created_at asc`,
     args: [id],
   });
@@ -132,12 +133,13 @@ export async function getQuestion(reference: string | number, viewerId?: string)
   });
 
   const comments = await db().execute({
-    sql: `select c.content_type, c.content_id, c.body, c.created_at, a.username as author
+    sql: `select c.id, c.content_type, c.content_id, c.body, c.created_at, c.edited_at,
+                 c.author_id, a.username as author
           from comments c left join actors a on a.id = c.author_id
-          where c.is_deleted = 0
+          where ${visibleComment('c')}
             and ((c.content_type = 'question' and c.content_id = ?)
               or (c.content_type = 'answer' and c.content_id in
-                  (select id from answers where question_id = ?)))
+                  (select id from answers where question_id = ? and ${visible('answers')})))
           order by c.created_at`,
     args: [id, id],
   });
@@ -180,10 +182,13 @@ export async function getQuestion(reference: string | number, viewerId?: string)
     } | null,
     contributors: contributors.rows as unknown as { username: string; kind: string }[],
     comments: comments.rows as unknown as {
+      id: number;
       content_type: string;
       content_id: number;
       body: string;
       created_at: string;
+      edited_at: string | null;
+      author_id: string;
       author: string | null;
     }[],
     votes: myVotes.rows as unknown as { content_type: string; content_id: number; value: number }[],

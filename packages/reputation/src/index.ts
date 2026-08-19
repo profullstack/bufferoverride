@@ -1,4 +1,4 @@
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 
 /**
  * What reputation is for here.
@@ -27,19 +27,19 @@ const OVERALL_SQL = `
   select a.id as actor_id, cast(coalesce(
       (select sum(case when v.value > 0 then ${WEIGHTS.answerUpvote} else ${WEIGHTS.answerDownvote} end)
          from votes v join answers ans on ans.id = v.content_id
-        where v.content_type = 'answer' and ans.author_id = a.id and ans.is_hidden = 0), 0)
+        where v.content_type = 'answer' and ans.author_id = a.id and ${visible('ans')}), 0)
     + coalesce(
       (select sum(case when v.value > 0 then ${WEIGHTS.questionUpvote} else 0 end)
          from votes v join questions q on q.id = v.content_id
-        where v.content_type = 'question' and q.author_id = a.id and q.is_hidden = 0), 0)
+        where v.content_type = 'question' and q.author_id = a.id and ${visible('q')}), 0)
     + coalesce(
       (select count(*) * ${WEIGHTS.accepted} from answers
-        where author_id = a.id and is_accepted = 1 and is_hidden = 0), 0)
+        where author_id = a.id and is_accepted = 1 and ${visible('answers')}), 0)
     + coalesce(
       (select count(*) * ${WEIGHTS.verificationReceived} from verifications ver
          join answers ans on ans.id = ver.answer_id
         where ans.author_id = a.id and ver.is_independent = 1 and ver.result = 'pass'
-          and ans.is_hidden = 0), 0)
+          and ${visible('ans')}), 0)
     + coalesce(
       (select count(*) * ${WEIGHTS.verificationGiven} from verifications
         where actor_id = a.id and is_independent = 1), 0)
@@ -64,7 +64,7 @@ const TAG_SQL = `
   from answers ans
   join question_tags qt on qt.question_id = ans.question_id
   left join verifications ver on ver.answer_id = ans.id
-  where ans.is_hidden = 0
+  where ${visible('ans')}
   group by ans.author_id, qt.tag_id
   having reputation <> 0`;
 

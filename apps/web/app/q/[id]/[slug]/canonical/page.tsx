@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { parseReference } from '@bufferoverride/core';
 import { Badge, Card, IdentityChip } from '@bufferoverride/ui';
 import { daysAgo } from '../../../../_lib/queries.ts';
@@ -19,7 +19,7 @@ export default async function CanonicalHistory({ params }: Params) {
 
   const q = await db().execute({
     sql: `select id, code, title from questions
-          where ${reference.kind === 'code' ? 'code = ?' : 'id = ?'} and is_hidden = 0`,
+          where ${reference.kind === 'code' ? 'code = ?' : 'id = ?'} and ${visible('questions')}`,
     args: [reference.kind === 'code' ? reference.code : reference.id],
   });
   if (!q.rows.length) notFound();

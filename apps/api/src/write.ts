@@ -17,11 +17,19 @@ import {
   recordVerification,
   type Refusal,
 } from './publish.ts';
+import {
+  deleteAnswer,
+  deleteComment,
+  deleteQuestion,
+  editAnswer,
+  editComment,
+  editQuestion,
+} from './edit.ts';
 
 export const write = new Hono();
 
 /** Map a refusal from the shared write path onto the HTTP shape REST uses. */
-function refusalResponse(refusal: Refusal): [Record<string, unknown>, 400 | 404 | 409 | 429] {
+function refusalResponse(refusal: Refusal): [Record<string, unknown>, 400 | 403 | 404 | 409 | 429] {
   switch (refusal.kind) {
     case 'invalid':
       return [{ error: 'invalid', errors: refusal.errors }, 400];
@@ -31,6 +39,10 @@ function refusalResponse(refusal: Refusal): [Record<string, unknown>, 400 | 404 
       return [{ error: 'rate_limited', retryAfterMinutes: refusal.retryAfterMinutes }, 429];
     case 'secrets':
       return [{ error: 'secrets_detected', findings: refusal.findings }, 409];
+    case 'forbidden':
+      return [{ error: 'not_the_author', message: refusal.message }, 403];
+    case 'conflict':
+      return [{ error: refusal.reason, message: refusal.message }, 409];
   }
 }
 
@@ -399,4 +411,164 @@ write.post('/v1/flags', async (c) => {
     return c.json({ ok: true, already: true });
   }
   return c.json({ ok: true }, 201);
+});
+
+// ── edit and delete ───────────────────────────────────────────────────────
+/**
+ * The update and delete half of the API. Ownership is enforced in edit.ts
+ * alongside the rules, so these handlers only authenticate the caller and
+ * translate a refusal into a status code.
+ *
+ * PATCH is a partial update: a field the caller omits keeps its stored value,
+ * which is what lets the page ship a "fix the title" affordance without
+ * round-tripping the whole body back through the browser.
+ *
+ * DELETE needs no CSRF token of its own. A cross-site HTML form can only issue
+ * GET and POST, the session cookie is SameSite=Lax so it is not attached to a
+ * cross-site request of any method, and there is no CORS middleware in front of
+ * this — a scripted cross-origin attempt fails its preflight before it reaches
+ * a handler.
+ */
+async function editorFor(
+  c: { req: { header(name: string): string | undefined } },
+  scope: Scope,
+): Promise<{ actorId: string; viaKey: boolean; via: string } | 'forbidden' | null> {
+  const principal = await principalFor(c, scope);
+  if (!principal || principal === 'forbidden') return principal;
+  return {
+    actorId: principal.actor.id,
+    viaKey: principal.viaKey,
+    via: principal.viaKey ? 'key' : 'web',
+  };
+}
+
+write.patch('/v1/questions/:id', async (c) => {
+  if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
+  const editor = await editorFor(c, 'write:questions');
+  if (!editor || editor === 'forbidden')
+    return c.json(deny(editor), editor === 'forbidden' ? 403 : 401);
+
+  const body = await c.req.json<{
+    title?: string;
+    body?: string;
+    tags?: string[];
+    comment?: string;
+    acknowledgeSecrets?: boolean;
+  }>();
+
+  try {
+    const updated = await editQuestion({
+      editor,
+      question: c.req.param('id'),
+      title: body.title,
+      body: body.body,
+      tags: body.tags,
+      comment: body.comment,
+      acknowledgeSecrets: body.acknowledgeSecrets,
+    });
+    return c.json({ data: updated });
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
+  }
+});
+
+write.delete('/v1/questions/:id', async (c) => {
+  const editor = await editorFor(c, 'write:questions');
+  if (!editor || editor === 'forbidden')
+    return c.json(deny(editor), editor === 'forbidden' ? 403 : 401);
+
+  try {
+    const removed = await deleteQuestion({ editor, question: c.req.param('id') });
+    return c.json({ data: { deleted: removed.code } });
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
+  }
+});
+
+write.patch('/v1/answers/:id', async (c) => {
+  if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
+  const editor = await editorFor(c, 'write:answers');
+  if (!editor || editor === 'forbidden')
+    return c.json(deny(editor), editor === 'forbidden' ? 403 : 401);
+
+  const body = await c.req.json<{
+    body?: string;
+    validFrom?: string;
+    validThrough?: string;
+    comment?: string;
+    acknowledgeSecrets?: boolean;
+  }>();
+
+  try {
+    const updated = await editAnswer({
+      editor,
+      answerId: Number(c.req.param('id')),
+      body: body.body,
+      validFrom: body.validFrom,
+      validThrough: body.validThrough,
+      comment: body.comment,
+      acknowledgeSecrets: body.acknowledgeSecrets,
+    });
+    return c.json({ data: updated });
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
+  }
+});
+
+write.delete('/v1/answers/:id', async (c) => {
+  const editor = await editorFor(c, 'write:answers');
+  if (!editor || editor === 'forbidden')
+    return c.json(deny(editor), editor === 'forbidden' ? 403 : 401);
+
+  try {
+    const removed = await deleteAnswer({ editor, answerId: Number(c.req.param('id')) });
+    return c.json({ data: { deleted: removed.id } });
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
+  }
+});
+
+write.patch('/v1/comments/:id', async (c) => {
+  if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
+  const editor = await editorFor(c, 'write:comments');
+  if (!editor || editor === 'forbidden')
+    return c.json(deny(editor), editor === 'forbidden' ? 403 : 401);
+
+  const body = await c.req.json<{ body?: string }>();
+
+  try {
+    const updated = await editComment({
+      editor,
+      commentId: Number(c.req.param('id')),
+      body: body.body ?? '',
+    });
+    return c.json({ data: updated });
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
+  }
+});
+
+write.delete('/v1/comments/:id', async (c) => {
+  const editor = await editorFor(c, 'write:comments');
+  if (!editor || editor === 'forbidden')
+    return c.json(deny(editor), editor === 'forbidden' ? 403 : 401);
+
+  try {
+    const removed = await deleteComment({ editor, commentId: Number(c.req.param('id')) });
+    return c.json({ data: { deleted: removed.id } });
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
+  }
 });

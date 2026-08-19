@@ -1,4 +1,4 @@
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { areIndependent } from '@bufferoverride/auth';
 import {
   checkRate,
@@ -29,7 +29,11 @@ export type Refusal =
   | { kind: 'invalid'; errors: Invalid[] }
   | { kind: 'not_found'; what: string }
   | { kind: 'rate_limited'; retryAfterMinutes: number }
-  | { kind: 'secrets'; findings: Finding[] };
+  | { kind: 'secrets'; findings: Finding[] }
+  /** The caller is authenticated, but the content belongs to someone else. */
+  | { kind: 'forbidden'; message: string }
+  /** Allowed in principle, refused by the state of the thing right now. */
+  | { kind: 'conflict'; reason: string; message: string };
 
 export class PublishError extends Error {
   readonly refusal: Refusal;
@@ -50,6 +54,10 @@ export function describe(refusal: Refusal): string {
       return `Rate limited. Try again in ${refusal.retryAfterMinutes} minutes.`;
     case 'secrets':
       return `Refused: this looks like it contains ${refusal.findings[0].kind} on line ${refusal.findings[0].line}. Redact it, or pass acknowledgeSecrets if it is a placeholder.`;
+    case 'forbidden':
+      return refusal.message;
+    case 'conflict':
+      return refusal.message;
   }
 }
 
@@ -73,7 +81,7 @@ async function guardRate(actorId: string, action: string): Promise<void> {
  * scanner that quietly rewrites your paste teaches you nothing and gets it
  * wrong eventually. `acknowledge` is the author saying "that is a placeholder".
  */
-function guardSecrets(text: string, acknowledge: boolean | undefined): void {
+export function guardSecrets(text: string, acknowledge: boolean | undefined): void {
   const findings = scanSecrets(text);
   if (findings.length && !acknowledge) throw new PublishError({ kind: 'secrets', findings });
 }
@@ -181,7 +189,7 @@ export async function publishAnswer(
 
   const exists = await db().execute({
     sql: `select id, code, slug, title from questions
-          where ${reference.kind === 'code' ? 'code = ?' : 'id = ?'} and is_hidden = 0`,
+          where ${reference.kind === 'code' ? 'code = ?' : 'id = ?'} and ${visible('questions')}`,
     args: [reference.kind === 'code' ? reference.code : reference.id],
   });
   if (!exists.rows.length) throw new PublishError({ kind: 'not_found', what: `question ${input.question}` });
@@ -224,7 +232,7 @@ export async function publishAnswer(
       },
       {
         sql: `update questions
-              set answer_count = (select count(*) from answers where question_id = ?),
+              set answer_count = (select count(*) from answers where question_id = ? and ${visible('answers')}),
                   updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
               where id = ?`,
         args: [questionId, questionId],

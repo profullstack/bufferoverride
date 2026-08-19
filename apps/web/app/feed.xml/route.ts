@@ -1,4 +1,4 @@
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { baseUrl, rfc822, xml } from '../_lib/xml.ts';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export async function GET() {
   const r = await db().execute(
     `select q.code, q.slug, q.title, q.body, q.created_at, a.username as author
      from questions q left join actors a on a.id = q.author_id
-     where q.is_hidden = 0
+     where ${visible('q')}
      order by q.created_at desc, q.id desc limit 50`,
   );
   const rows = r.rows as unknown as {
