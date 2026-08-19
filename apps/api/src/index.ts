@@ -2,11 +2,13 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { db, env } from '@bufferoverride/db';
 import { auth } from './auth.ts';
+import { mcp } from './mcp.ts';
 
 const app = new Hono();
 
 // Authentication: magic link, passkeys and CoinPay OAuth.
 app.route('/', auth);
+app.route('/', mcp);
 
 app.get('/health', (c) => c.json({ ok: true, service: 'api' }));
 
@@ -81,6 +83,13 @@ app.notFound((c) => c.json({ error: 'not_found' }, 404));
 app.onError((err, c) => {
   console.error('[api]', err);
   return c.json({ error: 'internal_error' }, 500);
+});
+
+// The PRD advertises /api/v1/... as the JSON representation; keep /v1 too.
+app.all('/api/v1/*', (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = url.pathname.replace(/^\/api\/v1/, '/v1');
+  return app.fetch(new Request(url, c.req.raw));
 });
 
 const port = Number(env('API_PORT') ?? 3001);

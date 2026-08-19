@@ -149,9 +149,6 @@ export default async function QuestionPage({ params }: Params) {
                   <Button href={`/q/${q.id}/${q.slug}/revisions`} variant="outline" size="sm">
                     History
                   </Button>
-                  <Button href={`/q/${q.id}/${q.slug}/challenge`} variant="outline" size="sm">
-                    Challenge
-                  </Button>
                 </div>
               </div>
             </section>
