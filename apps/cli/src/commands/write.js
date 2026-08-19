@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { tagList } from '../args.js';
-import { Api, ApiError } from '../api.js';
+import { Api, ApiError, questionRef } from '../api.js';
 import { resolveSettings } from '../config.js';
 import { environmentLine, probeEnvironment, runCommand } from '../capture.js';
 import { resolveBody } from '../editor.js';
@@ -133,7 +133,7 @@ export async function ask(ctx) {
       json(created.data);
     } else {
       out('');
-      out(`${green('Published')} ${bold(`#${created.data.id}`)}`);
+      out(`${green('Published')} ${bold(`#${questionRef(created.data)}`)}`);
       out(dim(`${settings.url}${created.data.url}`));
     }
     return 0;
@@ -173,7 +173,7 @@ export async function answer(ctx) {
     flags,
     initial: '',
     instructions: [
-      question ? `Answering #${question.id}: ${question.title}` : `Answering #${questionId}`,
+      question ? `Answering #${questionRef(question)}: ${question.title}` : `Answering #${questionId}`,
       'Say why it works, not only what to type. Declare the versions it is valid for.',
     ],
   });

@@ -17,10 +17,12 @@ export default function CliDocs() {
         </p>
         <DocsNav />
 
-        <div className={styles.warn}>
-          The CLI is not published yet. The commands below are the shipping interface; the install
-          line lands with the first release.
-        </div>
+        <h2 className={styles.h2}>Install</h2>
+        <pre className={styles.pre}>{`npm install -g @profullstack/bufferoverride`}</pre>
+        <p className={styles.p}>
+          Node 20 or newer, and nothing else — the package has no dependencies. Reads work
+          immediately; <span className="mono">bo login</span> is only needed to publish.
+        </p>
 
         <h2 className={styles.h2}>Capture a failure</h2>
         <pre className={styles.pre}>{`bo run -- bun test
@@ -29,7 +31,7 @@ export default function CliDocs() {
   redacting output ... 2 secrets removed
   searching bufferoverride ... 1 close match
 
-  #1842 Bun worker exits after importing libsql
+  #a1b2c3d4e5 Bun worker exits after importing libsql
         canonical · verified 2x · bun 1.1 - 1.3`}</pre>
         <p className={styles.p}>
           Nothing is uploaded without you seeing it first. <span className="mono">bo run</span>{' '}
@@ -39,10 +41,10 @@ export default function CliDocs() {
 
         <h2 className={styles.h2}>Everything else</h2>
         <pre className={styles.pre}>{`bo search "worker exited before finishing"
-bo get 1842
+bo get a1b2c3d4e5
 bo ask --title "..." --tag bun
-bo answer 1842 --file answer.md
-bo verify 1842 --answer 3921
+bo answer a1b2c3d4e5 --file answer.md
+bo verify a1b2c3d4e5 --answer 3921
 bo login --provider coinpay
 bo mcp config`}</pre>
 
@@ -59,9 +61,9 @@ bo mcp config`}</pre>
           document, and <span className="mono">--copy</span> puts that same document on the system
           clipboard where a clipboard tool exists.
         </p>
-        <pre className={styles.pre}>{`bo get 1842 --markdown > thread.md
-bo get 1842 --copy
-bo get 1842 --markdown | gh issue create --body-file -`}</pre>
+        <pre className={styles.pre}>{`bo get a1b2c3d4e5 --markdown > thread.md
+bo get a1b2c3d4e5 --copy
+bo get a1b2c3d4e5 --markdown | gh issue create --body-file -`}</pre>
 
         <h2 className={styles.h2}>Safety</h2>
         <p className={styles.p}>

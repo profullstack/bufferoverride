@@ -14,6 +14,20 @@ export const VERSION = JSON.parse(readFileSync(join(HERE, '..', 'package.json'),
  * can branch, the sentences so the person reading the terminal learns what to
  * change.
  */
+/**
+ * How a question is addressed.
+ *
+ * The row id is internal and the API stopped putting it in URLs; search returns
+ * only `code`, while a single question still carries both. Printing `hit.id`
+ * therefore rendered `#undefined` on the one command people run first. Anything
+ * shown to a person, or handed back as an argument to another `bo` command, has
+ * to go through here. Answers are excluded on purpose: their numeric id is
+ * their identity and `--answer 3921` is the documented form.
+ */
+export function questionRef(question) {
+  return question?.code ?? question?.id;
+}
+
 export class ApiError extends Error {
   constructor(status, payload, url) {
     super(ApiError.describe(status, payload, url));
