@@ -55,6 +55,8 @@ export async function searchQuestions(q: string, limit = 25): Promise<QuestionRo
 
 export type AnswerRow = {
   id: number;
+  score: number;
+  author_id: string;
   body: string;
   author: string | null;
   author_kind: string | null;
@@ -67,7 +69,7 @@ export type AnswerRow = {
   created_at: string;
 };
 
-export async function getQuestion(id: number) {
+export async function getQuestion(id: number, viewerId?: string) {
   const question = await db().execute({
     sql: `select q.*, a.username as author, a.kind as author_kind
           from questions q left join actors a on a.id = q.author_id
@@ -79,6 +81,7 @@ export async function getQuestion(id: number) {
   const answers = await db().execute({
     sql: `select ans.id, ans.body, ans.attribution, ans.is_accepted, ans.verified_count,
                  ans.valid_from, ans.valid_through, ans.is_stale, ans.created_at,
+                 ans.score, ans.author_id,
                  a.username as author, a.kind as author_kind
           from answers ans left join actors a on a.id = ans.author_id
           where ans.question_id = ?
@@ -103,7 +106,38 @@ export async function getQuestion(id: number) {
     args: [id],
   });
 
+  const comments = await db().execute({
+    sql: `select c.content_type, c.content_id, c.body, c.created_at, a.username as author
+          from comments c left join actors a on a.id = c.author_id
+          where c.is_deleted = 0
+            and ((c.content_type = 'question' and c.content_id = ?)
+              or (c.content_type = 'answer' and c.content_id in
+                  (select id from answers where question_id = ?)))
+          order by c.created_at`,
+    args: [id, id],
+  });
+
+  // One query for every vote this viewer has cast on this page.
+  const myVotes = viewerId
+    ? await db().execute({
+        sql: `select content_type, content_id, value from votes
+              where actor_id = ?
+                and ((content_type = 'question' and content_id = ?)
+                  or (content_type = 'answer' and content_id in
+                      (select id from answers where question_id = ?)))`,
+        args: [viewerId, id, id],
+      })
+    : { rows: [] as unknown[] };
+
   return {
+    comments: comments.rows as unknown as {
+      content_type: string;
+      content_id: number;
+      body: string;
+      created_at: string;
+      author: string | null;
+    }[],
+    votes: myVotes.rows as unknown as { content_type: string; content_id: number; value: number }[],
     question: question.rows[0] as unknown as QuestionRow & { body: string },
     answers: answers.rows as unknown as AnswerRow[],
     verifications: verifications.rows as unknown as {

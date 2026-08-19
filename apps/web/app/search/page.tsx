@@ -47,7 +47,10 @@ export default async function Search({
         {query && results.length === 0 ? (
           <div className={styles.empty}>
             <strong style={{ color: 'var(--text-primary)' }}>No matches.</strong>
-            <span>Nobody has published this failure yet — which makes it worth asking.</span>
+            <span>
+              Nobody has published this failure yet — which makes it worth{' '}
+              <a href="/ask">asking</a>.
+            </span>
           </div>
         ) : (
           <div className={styles.rows}>

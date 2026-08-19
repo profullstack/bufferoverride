@@ -16,7 +16,8 @@
     "@bufferoverride/ui": "workspace:*",
     "@bufferoverride/design-tokens": "workspace:*",
     "@bufferoverride/auth": "workspace:*",
-    "@simplewebauthn/browser": "^13.2.2"
+    "@simplewebauthn/browser": "^13.2.2",
+    "@bufferoverride/core": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.2.18",

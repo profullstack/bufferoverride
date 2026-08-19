@@ -13,6 +13,9 @@ importers:
       '@bufferoverride/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@bufferoverride/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@bufferoverride/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -40,6 +43,9 @@ importers:
       '@bufferoverride/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@bufferoverride/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@bufferoverride/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -83,6 +89,12 @@ importers:
       '@simplewebauthn/server':
         specifier: ^13.2.2
         version: 13.3.2
+
+  packages/core:
+    dependencies:
+      '@bufferoverride/db':
+        specifier: workspace:*
+        version: link:../db
 
   packages/db:
     dependencies:

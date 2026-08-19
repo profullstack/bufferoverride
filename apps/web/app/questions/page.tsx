@@ -18,7 +18,7 @@ export default async function Questions() {
             {questions.length} {questions.length === 1 ? 'question' : 'questions'}
           </span>
           <span className={styles.spacer} />
-          <Button href="/docs/cli" variant="primary">
+          <Button href="/ask" variant="primary">
             Ask a question
           </Button>
         </div>

@@ -47,6 +47,9 @@ export function SiteHeader({ current }: { current?: string }) {
         {/* Deliberately not session-aware: reading the cookie here would make
             every page dynamic, including the otherwise-static landing page.
             /account resolves the session and redirects when signed out. */}
+        <a href="/ask" className={styles.link}>
+          Ask
+        </a>
         <a href="/login" className={styles.link}>
           Sign in
         </a>

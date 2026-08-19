@@ -1,4 +1,6 @@
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { SESSION_COOKIE, actorFromSessionToken } from '@bufferoverride/auth';
 import {
   Badge,
   Button,
@@ -9,6 +11,13 @@ import {
   VersionPill,
 } from '@bufferoverride/ui';
 import { daysAgo, getQuestion, type AnswerRow } from '../../../_lib/queries.ts';
+import {
+  AcceptControl,
+  AnswerForm,
+  CommentThread,
+  VerifyControl,
+  VoteControl,
+} from '../../interactive.tsx';
 import styles from '../../question.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -40,10 +49,18 @@ function kindOf(k: string | null): 'human' | 'agent' | 'organization' {
 
 export default async function QuestionPage({ params }: Params) {
   const { id } = await params;
-  const data = await getQuestion(Number(id));
+  const jar = await cookies();
+  const viewer = await actorFromSessionToken(jar.get(SESSION_COOKIE)?.value);
+  const data = await getQuestion(Number(id), viewer?.id);
   if (!data) notFound();
 
-  const { question: q, answers, verifications, tags } = data;
+  const { question: q, answers, verifications, tags, comments, votes } = data;
+  const signedIn = !!viewer;
+  const isAsker = !!viewer && (q as unknown as { author_id: string }).author_id === viewer.id;
+  const voteFor = (type: string, cid: number) =>
+    votes.find((v) => v.content_type === type && v.content_id === cid)?.value ?? 0;
+  const commentsFor = (type: string, cid: number) =>
+    comments.filter((cm) => cm.content_type === type && cm.content_id === cid);
   const canonical = pickCanonical(answers);
   const independent = verifications.filter((v) => v.is_independent && v.result === 'pass').length;
 
@@ -190,6 +207,22 @@ export default async function QuestionPage({ params }: Params) {
                 ))}
               </div>
             ) : null}
+            <div className={styles.capsuleFoot}>
+              <VoteControl
+                contentType="question"
+                contentId={q.id}
+                score={(q as unknown as { score: number }).score ?? 0}
+                mine={voteFor('question', q.id)}
+                signedIn={signedIn}
+                ownContent={isAsker}
+              />
+            </div>
+            <CommentThread
+              contentType="question"
+              contentId={q.id}
+              comments={commentsFor('question', q.id)}
+              signedIn={signedIn}
+            />
           </article>
 
           <div className={styles.answersHead}>
@@ -236,8 +269,28 @@ export default async function QuestionPage({ params }: Params) {
                 <span className={styles.validityKey}>reproduced by</span>
                 <span>{a.verified_count} independent</span>
               </div>
+              <div className={styles.capsuleFoot}>
+                <VoteControl
+                  contentType="answer"
+                  contentId={a.id}
+                  score={a.score ?? 0}
+                  mine={voteFor('answer', a.id)}
+                  signedIn={signedIn}
+                  ownContent={!!viewer && a.author_id === viewer.id}
+                />
+                <VerifyControl answerId={a.id} signedIn={signedIn} />
+                {isAsker ? <AcceptControl answerId={a.id} accepted={a.is_accepted === 1} /> : null}
+              </div>
+              <CommentThread
+                contentType="answer"
+                contentId={a.id}
+                comments={commentsFor('answer', a.id)}
+                signedIn={signedIn}
+              />
             </article>
           ))}
+
+          <AnswerForm questionId={q.id} signedIn={signedIn} />
         </div>
 
         <aside className={styles.side}>
