@@ -6,22 +6,16 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 WORKDIR /app
 
-FROM base AS deps
-# Manifests first so a source-only change reuses the install layer.
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
-COPY packages/db/package.json ./packages/db/
-COPY apps/api/package.json ./apps/api/
-COPY apps/web/package.json ./apps/web/
-COPY apps/media/package.json ./apps/media/
-COPY apps/worker/package.json ./apps/worker/
-COPY apps/gateway/package.json ./apps/gateway/
-RUN pnpm install --frozen-lockfile
-
 FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps ./apps
-COPY --from=deps /app/packages ./packages
+# Copy the whole tree before installing.
+#
+# The previous version listed each workspace manifest by hand to keep the
+# install layer cacheable, and then silently rotted: a package added to the
+# workspace but not to that list never got its dependencies installed, and the
+# build failed only once that package gained an external dependency. Correct
+# beats cacheable here — the install is a couple of minutes.
 COPY . .
+RUN pnpm install --frozen-lockfile
 # Next reads no runtime secrets at build time; pages are force-dynamic.
 RUN pnpm --filter @bufferoverride/web build
 
