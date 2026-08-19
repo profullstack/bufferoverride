@@ -11,26 +11,41 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 60px;
+  height: 76px;
 }
 
-/* Below ~400px the wordmark is the only thing that can go without removing a
-   destination. The mark stays, so the link is still recognisable. */
-.wordmark { display: none; }
+/* The lockup carries the wordmark, so no text sits beside it.
+ *
+ * Two renditions rather than one: the wordmark sets "Buffer" in a colour that
+ * has to flip with the surface, so no single file serves both themes.
+ * logo.png carries it in white for the dark surface, logo-light.png in dark
+ * navy for the light one; both are transparent, so the header surface shows
+ * through. The toggle mirrors the token system exactly — system preference,
+ * unless an explicit data-theme overrides it in either direction. */
+/* The lockup is 4:1, so on a phone it would crowd out the navigation. Below
+   480px the mark stands alone; above it the full lockup appears. */
+.logo { display: none; width: auto; height: 40px; }
+.logoMark { display: block; width: 40px; height: 40px; flex-shrink: 0; }
 
-@media (min-width: 400px) {
-  .wordmark { display: inline; }
+@media (min-width: 480px) {
+  .logo { display: block; }
+  .logoMark { display: none; }
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
+@media (min-width: 700px) {
+  .logo { height: 48px; }
+}
+
+.logoDark { display: none; }
+
+@media (min-width: 480px) {
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .logoLight { display: none; }
+    :global(:root:not([data-theme='light'])) .logoDark { display: block; }
+  }
+
+  :global(:root[data-theme='dark']) .logoLight { display: none; }
+  :global(:root[data-theme='dark']) .logoDark { display: block; }
 }
 
 .nav {
@@ -41,9 +56,9 @@
 
 /* The nav appears only once it fits beside the account menu and the CTA;
    at 900 it fit only by pushing the CTA off the edge. */
-@media (min-width: 1024px) {
+@media (min-width: 1120px) {
   .nav { display: flex; }
-  .bar { gap: 32px; }
+  .bar { gap: 28px; }
 }
 
 .link {
@@ -70,7 +85,7 @@
 /* The disclosure that replaces the inline nav below its breakpoint. */
 .compact { display: flex; }
 
-@media (min-width: 1024px) {
+@media (min-width: 1120px) {
   .compact { display: none; }
 }
 
@@ -94,7 +109,7 @@
 /* The search field only appears once there is genuinely room for it beside the
    nav, the account menu and the CLI button. At 1100 it fit only by pushing
    them off the right edge. */
-@media (min-width: 1280px) {
+@media (min-width: 1440px) {
   .search { display: flex; }
 }
 
