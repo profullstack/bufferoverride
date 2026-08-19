@@ -105,8 +105,36 @@ function proxy(req: IncomingMessage, res: ServerResponse, port: number, name: st
   req.pipe(upstream);
 }
 
+/**
+ * One canonical host.
+ *
+ * www is a separate origin to a browser, a crawler and to WebAuthn: a passkey
+ * registered on the apex cannot be asserted on www, and an indexed www URL
+ * splits ranking signals across two hosts. So www is redirected permanently
+ * rather than served, before anything else looks at the request.
+ */
+function canonicalRedirect(req: IncomingMessage): string | null {
+  const host = (req.headers['x-forwarded-host'] ?? req.headers.host ?? '')
+    .toString()
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  if (!host.startsWith('www.')) return null;
+
+  const proto = (req.headers['x-forwarded-proto'] ?? 'https').toString().split(',')[0].trim();
+  return `${proto}://${host.slice(4)}${req.url ?? '/'}`;
+}
+
 const server = createServer((req, res) => {
   const url = req.url ?? '/';
+
+  const redirect = canonicalRedirect(req);
+  if (redirect) {
+    // 308 rather than 301: a POST to www must stay a POST when it lands.
+    res.writeHead(308, { location: redirect, 'cache-control': 'public, max-age=3600' });
+    res.end();
+    return;
+  }
 
   if (url === '/health' || url === '/healthz') {
     const ok = supervisor.healthy;

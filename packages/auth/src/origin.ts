@@ -37,6 +37,10 @@ function allowedHosts(): string[] {
 
 function isAllowed(host: string): boolean {
   const h = host.toLowerCase();
+  // www is redirected at the edge and is never a canonical origin, so it is
+  // deliberately not allowlisted: a magic link or passkey must never be minted
+  // against a host we do not serve.
+  if (h.startsWith('www.')) return false;
   if (allowedHosts().includes(h)) return true;
   // The platform-assigned deploy host, and local development.
   if (/^[a-z0-9-]+\.up\.railway\.app$/.test(h)) return true;
