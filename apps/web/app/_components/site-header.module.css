@@ -14,14 +14,9 @@
   height: 76px;
 }
 
-/* The lockup carries the wordmark, so no text sits beside it.
- *
- * Two renditions rather than one: the wordmark sets "Buffer" in a colour that
- * has to flip with the surface, so no single file serves both themes.
- * logo.png carries it in white for the dark surface, logo-light.png in dark
- * navy for the light one; both are transparent, so the header surface shows
- * through. The toggle mirrors the token system exactly — system preference,
- * unless an explicit data-theme overrides it in either direction. */
+/* The lockup carries the wordmark, so no text sits beside it. One rendition:
+ * logo.png sets "Buffer" in white on a transparent ground, for the dark
+ * surface the app ships. */
 /* The lockup is 4:1, so on a phone it would crowd out the navigation. Below
    480px the mark stands alone; above it the full lockup appears. */
 .logo { display: none; width: auto; height: 40px; }
@@ -34,18 +29,6 @@
 
 @media (min-width: 700px) {
   .logo { height: 48px; }
-}
-
-.logoDark { display: none; }
-
-@media (min-width: 480px) {
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme='light'])) .logoLight { display: none; }
-    :global(:root:not([data-theme='light'])) .logoDark { display: block; }
-  }
-
-  :global(:root[data-theme='dark']) .logoLight { display: none; }
-  :global(:root[data-theme='dark']) .logoDark { display: block; }
 }
 
 .nav {

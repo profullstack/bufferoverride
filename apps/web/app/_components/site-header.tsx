@@ -24,14 +24,7 @@ export function SiteHeader({ current }: { current?: string }) {
             height={192}
           />
           <img
-            className={`${styles.logo} ${styles.logoLight}`}
-            src="/logo-light.png"
-            alt=""
-            width={1200}
-            height={300}
-          />
-          <img
-            className={`${styles.logo} ${styles.logoDark}`}
+            className={styles.logo}
             src="/logo.png"
             alt=""
             width={1200}
