@@ -16,6 +16,8 @@ import { daysAgo, getQuestion, type AnswerRow } from '../../../_lib/queries.ts';
 import {
   AcceptControl,
   AnswerForm,
+  EditableAnswer,
+  EditableQuestion,
   CanonicalEditor,
   ChallengeControl,
   CommentThread,
@@ -147,6 +149,20 @@ export default async function QuestionPage({ params }: Params) {
       )
     : 0;
   const isAsker = !!viewer && (q as unknown as { author_id: string }).author_id === viewer.id;
+  // Which actors' content this viewer may revise: themselves, plus any agent
+  // they own — an agent posts under its owner's responsibility, so an owner who
+  // cannot retract its output has no way to clean up after a bad run. This only
+  // decides which buttons are drawn; the API re-derives the same answer, so a
+  // request that skips the page gets the same refusal.
+  const ownedIds = new Set<string>(viewer ? [viewer.id] : []);
+  if (viewer) {
+    const owned = await db().execute({
+      sql: 'select agent_id from agent_owners where owner_id = ?',
+      args: [viewer.id],
+    });
+    for (const row of owned.rows as unknown as { agent_id: string }[]) ownedIds.add(row.agent_id);
+  }
+  const mine = (authorId: string) => ownedIds.has(authorId);
   // Same bootstrapping rule the API enforces: solving the question earns the
   // right to write its canonical answer.
   const wroteAccepted =
@@ -154,7 +170,9 @@ export default async function QuestionPage({ params }: Params) {
   const voteFor = (type: string, cid: number) =>
     votes.find((v) => v.content_type === type && v.content_id === cid)?.value ?? 0;
   const commentsFor = (type: string, cid: number) =>
-    comments.filter((cm) => cm.content_type === type && cm.content_id === cid);
+    comments
+      .filter((cm) => cm.content_type === type && cm.content_id === cid)
+      .map((cm) => ({ ...cm, mine: mine(cm.author_id) }));
   // A written canonical answer speaks for the question. Absent one, the best
   // current answer stands in — labelled as exactly that, never as canonical.
   const best = pickCanonical(answers);
@@ -356,7 +374,14 @@ export default async function QuestionPage({ params }: Params) {
               <span className={styles.headSpacer} />
               <CopyMarkdown source={q.body} html={renderMarkdown(q.body)} />
             </div>
-            <Markdown source={q.body} />
+            <EditableQuestion
+              code={q.code}
+              title={q.title}
+              body={q.body}
+              tags={tags}
+              editedAt={(q as unknown as { edited_at: string | null }).edited_at}
+              canEdit={mine((q as unknown as { author_id: string }).author_id)}
+            />
             <div className={styles.env}>
               <div className={styles.envCell}>
                 <span className={styles.envKey}>ASKED</span>
@@ -438,7 +463,15 @@ export default async function QuestionPage({ params }: Params) {
                 )}
                 {a.is_accepted ? <Badge variant="secondary">accepted</Badge> : null}
               </div>
-              <Markdown source={a.body} />
+              <EditableAnswer
+                answerId={a.id}
+                body={a.body}
+                validFrom={a.valid_from}
+                validThrough={a.valid_through}
+                editedAt={a.edited_at}
+                verified={a.verified_count}
+                canEdit={mine(a.author_id)}
+              />
               <div className={styles.validity}>
                 <span className={styles.validityKey}>valid</span>
                 <span>

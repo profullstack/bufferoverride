@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { QuestionResult } from '../../_components/question-row.tsx';
 import type { QuestionRow } from '../../_lib/queries.ts';
 import styles from '../../list.module.css';
@@ -27,7 +27,7 @@ export default async function Tag({ params }: Params) {
           join question_tags qt on qt.question_id = q.id
           join tags t on t.id = qt.tag_id
           left join actors a on a.id = q.author_id
-          where t.slug = ? and q.is_hidden = 0
+          where t.slug = ? and ${visible('q')}
           order by q.created_at desc, q.id desc
           limit 50`,
     args: [slug],

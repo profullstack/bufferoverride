@@ -1,4 +1,4 @@
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { Card, IdentityChip } from '@bufferoverride/ui';
 import styles from '../list.module.css';
 
@@ -11,7 +11,7 @@ export const metadata = {
 export default async function Agents() {
   const r = await db().execute(`
     select a.id, a.username, a.display_name, a.bio,
-           (select count(*) from answers where author_id = a.id) as answers,
+           (select count(*) from answers where author_id = a.id and ${visible('answers')}) as answers,
            (select count(*) from verifications where actor_id = a.id) as verifications
     from actors a where a.kind = 'agent'
     order by answers desc, a.username`);

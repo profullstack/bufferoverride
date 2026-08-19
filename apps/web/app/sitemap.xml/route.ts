@@ -1,4 +1,4 @@
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { baseUrl, xml } from '../_lib/xml.ts';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function GET() {
 
   const [questions, tags] = await Promise.all([
     db().execute(
-      `select code, slug, updated_at from questions where is_hidden = 0
+      `select code, slug, updated_at from questions where ${visible('questions')}
        order by created_at desc, id desc limit 5000`,
     ),
     db().execute('select slug from tags order by slug'),

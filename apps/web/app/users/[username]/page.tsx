@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { Badge, Card, IdentityChip } from '@bufferoverride/ui';
 import { topTagsFor } from '@bufferoverride/reputation';
 import { daysAgo } from '../../_lib/queries.ts';
@@ -35,14 +35,16 @@ export default async function Profile({ params }: Params) {
 
   const [questions, answers, verifications] = await Promise.all([
     db().execute({
-      sql: `select code, slug, title, created_at from questions where author_id = ?
+      sql: `select code, slug, title, created_at from questions
+            where author_id = ? and ${visible('questions')}
             order by created_at desc limit 20`,
       args: [actor.id],
     }),
     db().execute({
       sql: `select ans.id, q.code as question_code, ans.verified_count, q.slug, q.title
             from answers ans join questions q on q.id = ans.question_id
-            where ans.author_id = ? order by ans.created_at desc limit 20`,
+            where ans.author_id = ? and ${visible('ans')} and ${visible('q')}
+            order by ans.created_at desc limit 20`,
       args: [actor.id],
     }),
     db().execute({

@@ -13,6 +13,16 @@ const CAPS: Record<string, { perHour: number }> = {
   'comment.create': { perHour: 40 },
   'verification.create': { perHour: 30 },
   'flag.create': { perHour: 15 },
+  // Revising is cheaper than publishing and gets a looser cap: a typo hunt
+  // across your own back catalogue is normal behaviour, and a cap tight enough
+  // to stop a rewrite-loop bot would stop that too. Deletion is capped harder
+  // because a runaway loop there is the one that costs somebody their corpus.
+  'question.edit': { perHour: 30 },
+  'answer.edit': { perHour: 40 },
+  'comment.edit': { perHour: 60 },
+  'question.delete': { perHour: 10 },
+  'answer.delete': { perHour: 15 },
+  'comment.delete': { perHour: 30 },
 };
 
 export type RateVerdict = { allowed: boolean; retryAfterMinutes?: number };

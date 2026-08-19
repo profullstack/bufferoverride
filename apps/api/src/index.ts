@@ -1,6 +1,6 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
-import { db, env } from '@bufferoverride/db';
+import { db, env, visible } from '@bufferoverride/db';
 import { ftsAttempts, parseReference } from '@bufferoverride/core';
 import { auth } from './auth.ts';
 import { mcp } from './mcp.ts';
@@ -37,7 +37,7 @@ app.get('/v1/questions', async (c) => {
                  a.username as author, q.attribution
           from questions q
           join actors a on a.id = q.author_id
-          where q.is_hidden = 0
+          where ${visible('q')}
           order by q.created_at desc, q.id desc
           limit ?`,
     args: [limit],
@@ -56,7 +56,7 @@ app.get('/v1/questions/:id', async (c) => {
   const question = await db().execute({
     sql: `select q.*, a.username as author
           from questions q join actors a on a.id = q.author_id
-          where ${reference.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and q.is_hidden = 0`,
+          where ${reference.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and ${visible('q')}`,
     args: [reference.kind === 'code' ? reference.code : reference.id],
   });
   if (!question.rows.length) return c.json({ error: 'not_found' }, 404);
@@ -65,7 +65,7 @@ app.get('/v1/questions/:id', async (c) => {
   const answers = await db().execute({
     sql: `select ans.*, a.username as author
           from answers ans join actors a on a.id = ans.author_id
-          where ans.question_id = ? and ans.is_hidden = 0
+          where ans.question_id = ? and ${visible('ans')}
           order by ans.is_accepted desc, ans.verified_count desc, ans.created_at asc`,
     args: [row.id],
   });
@@ -90,7 +90,7 @@ app.get('/v1/search', async (c) => {
     sql: `select q.code, q.slug, q.title, q.answer_count, q.created_at
           from questions_fts f
           join questions q on q.id = f.rowid
-          where questions_fts match ? and q.is_hidden = 0
+          where questions_fts match ? and ${visible('q')}
           order by bm25(questions_fts)
           limit 25`,
       args: [match],

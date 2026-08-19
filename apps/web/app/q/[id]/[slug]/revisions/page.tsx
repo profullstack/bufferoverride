@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { db } from '@bufferoverride/db';
+import { db, visible } from '@bufferoverride/db';
 import { parseReference } from '@bufferoverride/core';
 import { Card, IdentityChip } from '@bufferoverride/ui';
 import { daysAgo } from '../../../../_lib/queries.ts';
@@ -18,7 +18,8 @@ export default async function Revisions({ params }: Params) {
   if (!reference) notFound();
 
   const q = await db().execute({
-    sql: `select id, code, title from questions where ${reference.kind === 'code' ? 'code = ?' : 'id = ?'}`,
+    sql: `select id, code, title from questions
+          where ${reference.kind === 'code' ? 'code = ?' : 'id = ?'} and ${visible('questions')}`,
     args: [reference.kind === 'code' ? reference.code : reference.id],
   });
   if (!q.rows.length) notFound();
@@ -31,7 +32,7 @@ export default async function Revisions({ params }: Params) {
           from revisions r left join actors a on a.id = r.actor_id
           where (r.content_type = 'question' and r.content_id = ?)
              or (r.content_type = 'answer' and r.content_id in
-                 (select id from answers where question_id = ?))
+                 (select id from answers where question_id = ? and ${visible('answers')}))
           order by r.created_at desc`,
     args: [qid, qid],
   });
