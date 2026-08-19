@@ -65,6 +65,9 @@ supervisor.start();
 /** Path prefix → upstream port. First match wins, so order matters. */
 const ROUTES: Array<[RegExp, number, string]> = [
   [/^\/(v1|api)(\/|$)/, API_PORT, 'api'],
+  // Auth callbacks are top-level navigations, so they live at the root rather
+  // than under /api, and must reach the API rather than the web app.
+  [/^\/auth(\/|$)/, API_PORT, 'api'],
   [/^\/mcp(\/|$)/, API_PORT, 'api'],
   [/^\/media(\/|$)/, MEDIA_PORT, 'media'],
 ];

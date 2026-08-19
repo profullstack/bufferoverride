@@ -14,7 +14,9 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "@bufferoverride/ui": "workspace:*",
-    "@bufferoverride/design-tokens": "workspace:*"
+    "@bufferoverride/design-tokens": "workspace:*",
+    "@bufferoverride/auth": "workspace:*",
+    "@simplewebauthn/browser": "^13.2.2"
   },
   "devDependencies": {
     "@types/react": "19.2.18",

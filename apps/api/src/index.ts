@@ -1,8 +1,12 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { db, env } from '@bufferoverride/db';
+import { auth } from './auth.ts';
 
 const app = new Hono();
+
+// Authentication: magic link, passkeys and CoinPay OAuth.
+app.route('/', auth);
 
 app.get('/health', (c) => c.json({ ok: true, service: 'api' }));
 

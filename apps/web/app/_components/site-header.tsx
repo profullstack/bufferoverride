@@ -44,6 +44,12 @@ export function SiteHeader({ current }: { current?: string }) {
           <span className={styles.kbd}>/</span>
         </form>
 
+        {/* Deliberately not session-aware: reading the cookie here would make
+            every page dynamic, including the otherwise-static landing page.
+            /account resolves the session and redirects when signed out. */}
+        <a href="/login" className={styles.link}>
+          Sign in
+        </a>
         <Button href="/docs/cli" variant="default" size="md">
           Get the CLI
         </Button>

@@ -25,3 +25,5 @@ apps/*/AGENTS.md
 apps/*/CLAUDE.md
 
 .data/
+
+.local-boot.mjs
