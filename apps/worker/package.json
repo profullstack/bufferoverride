@@ -4,5 +4,8 @@
   "private": true,
   "type": "module",
   "main": "src/index.ts",
-  "dependencies": { "@bufferoverride/db": "workspace:*" }
+  "dependencies": {
+    "@bufferoverride/db": "workspace:*",
+    "@bufferoverride/reputation": "workspace:*"
+  }
 }

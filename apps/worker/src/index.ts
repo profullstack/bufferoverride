@@ -1,6 +1,11 @@
 import { db, env } from '@bufferoverride/db';
+import { recomputeReputation } from '@bufferoverride/reputation';
 
 const TICK_MS = Number(env('WORKER_TICK_MS') ?? 60_000);
+// Reputation is a whole-table recomputation, so it runs on its own slower beat
+// rather than every tick.
+const REPUTATION_EVERY = Number(env('WORKER_REPUTATION_EVERY') ?? 10);
+let ticks = 0;
 
 /**
  * Background maintenance.
@@ -12,6 +17,7 @@ const TICK_MS = Number(env('WORKER_TICK_MS') ?? 60_000);
  */
 async function tick(): Promise<void> {
   const client = db();
+  ticks++;
 
   // Denormalised counters, recomputed in a single write transaction.
   await client.batch(
@@ -46,6 +52,11 @@ async function tick(): Promise<void> {
     ],
     'write',
   );
+
+  if (ticks % REPUTATION_EVERY === 1) {
+    const result = await recomputeReputation();
+    console.log(`[worker] reputation recomputed: ${result.actors} actors, ${result.tagRows} tag rows`);
+  }
 }
 
 async function loop(): Promise<void> {

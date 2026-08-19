@@ -12,7 +12,8 @@ export async function GET() {
 
   const [questions, tags] = await Promise.all([
     db().execute(
-      `select id, slug, updated_at from questions order by created_at desc, id desc limit 5000`,
+      `select id, slug, updated_at from questions where is_hidden = 0
+       order by created_at desc, id desc limit 5000`,
     ),
     db().execute('select slug from tags order by slug'),
   ]);

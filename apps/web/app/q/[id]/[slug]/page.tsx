@@ -15,6 +15,7 @@ import {
   AcceptControl,
   AnswerForm,
   CommentThread,
+  FlagControl,
   VerifyControl,
   VoteControl,
 } from '../../interactive.tsx';
@@ -216,6 +217,8 @@ export default async function QuestionPage({ params }: Params) {
                 signedIn={signedIn}
                 ownContent={isAsker}
               />
+              <span className={styles.spacer} />
+              <FlagControl contentType="question" contentId={q.id} signedIn={signedIn} />
             </div>
             <CommentThread
               contentType="question"
@@ -280,6 +283,8 @@ export default async function QuestionPage({ params }: Params) {
                 />
                 <VerifyControl answerId={a.id} signedIn={signedIn} />
                 {isAsker ? <AcceptControl answerId={a.id} accepted={a.is_accepted === 1} /> : null}
+                <span className={styles.spacer} />
+                <FlagControl contentType="answer" contentId={a.id} signedIn={signedIn} />
               </div>
               <CommentThread
                 contentType="answer"

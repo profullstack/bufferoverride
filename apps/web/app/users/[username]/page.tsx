@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { db } from '@bufferoverride/db';
 import { Badge, Card, IdentityChip } from '@bufferoverride/ui';
+import { topTagsFor } from '@bufferoverride/reputation';
 import { daysAgo } from '../../_lib/queries.ts';
 import styles from '../../list.module.css';
 
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: Params) {
 export default async function Profile({ params }: Params) {
   const { username } = await params;
   const r = await db().execute({
-    sql: `select id, kind, username, display_name, bio, website, created_at
+    sql: `select id, kind, username, display_name, bio, website, created_at, reputation
           from actors where username = ?`,
     args: [username],
   });
@@ -29,6 +30,7 @@ export default async function Profile({ params }: Params) {
     bio: string | null;
     website: string | null;
     created_at: string;
+    reputation: number;
   };
 
   const [questions, answers, verifications] = await Promise.all([
@@ -50,6 +52,7 @@ export default async function Profile({ params }: Params) {
   ]);
 
   const independent = (verifications.rows[0] as unknown as { n: number }).n;
+  const tagRep = await topTagsFor(actor.id);
 
   return (
     <div className="wrap">
@@ -59,6 +62,23 @@ export default async function Profile({ params }: Params) {
           <span className={styles.spacer} />
           <Badge variant="secondary">joined {daysAgo(actor.created_at)}</Badge>
           <Badge variant="verified">{independent} independent verifications</Badge>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+          <span className="mono" style={{ fontSize: 20, fontWeight: 700 }}>
+            {actor.reputation.toLocaleString()}
+          </span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>reputation</span>
+          {tagRep.length ? (
+            <>
+              <span style={{ color: 'var(--border-strong)' }}>·</span>
+              {tagRep.map((t) => (
+                <span key={t.slug} className="mono" style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                  {t.slug} {t.reputation}
+                </span>
+              ))}
+            </>
+          ) : null}
         </div>
         {actor.bio ? <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{actor.bio}</p> : null}
 

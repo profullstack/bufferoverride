@@ -396,3 +396,80 @@ export function CommentThread({
     </div>
   );
 }
+
+const REASONS: { value: string; label: string }[] = [
+  { value: 'secret', label: 'Contains a credential' },
+  { value: 'spam', label: 'Spam' },
+  { value: 'wrong', label: 'Dangerously wrong' },
+  { value: 'abusive', label: 'Abusive' },
+  { value: 'duplicate', label: 'Duplicate' },
+  { value: 'other', label: 'Something else' },
+];
+
+/** Reporting is one click plus a reason; a reason is required so the queue is triageable. */
+export function FlagControl({
+  contentType,
+  contentId,
+  signedIn,
+}: {
+  contentType: 'question' | 'answer' | 'comment';
+  contentId: number;
+  signedIn: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('secret');
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  if (done) return <span className={styles.commentMeta}>Reported. Thank you.</span>;
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className={styles.link}
+        onClick={() => (signedIn ? setOpen(true) : toLogin())}
+      >
+        Report
+      </button>
+    );
+  }
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await fetch('/v1/flags', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ contentType, contentId, reason }),
+      });
+      setDone(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className={styles.row} onSubmit={send}>
+      <select
+        className={styles.select}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        aria-label="Reason"
+      >
+        {REASONS.map((r) => (
+          <option key={r.value} value={r.value}>
+            {r.label}
+          </option>
+        ))}
+      </select>
+      <button className={styles.submit} type="submit" disabled={busy}>
+        Report
+      </button>
+      <button type="button" className={styles.action} onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </form>
+  );
+}

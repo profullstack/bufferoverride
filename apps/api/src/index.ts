@@ -5,6 +5,7 @@ import { auth } from './auth.ts';
 import { mcp } from './mcp.ts';
 import { write } from './write.ts';
 import { agents } from './agents.ts';
+import { moderation } from './moderation.ts';
 
 const app = new Hono();
 
@@ -13,6 +14,7 @@ app.route('/', auth);
 app.route('/', mcp);
 app.route('/', write);
 app.route('/', agents);
+app.route('/', moderation);
 
 app.get('/health', (c) => c.json({ ok: true, service: 'api' }));
 
@@ -28,6 +30,7 @@ app.get('/v1/questions', async (c) => {
                  a.username as author, q.attribution
           from questions q
           join actors a on a.id = q.author_id
+          where q.is_hidden = 0
           order by q.created_at desc, q.id desc
           limit ?`,
     args: [limit],
@@ -40,7 +43,7 @@ app.get('/v1/questions/:id', async (c) => {
   const question = await db().execute({
     sql: `select q.*, a.username as author
           from questions q join actors a on a.id = q.author_id
-          where q.id = ?`,
+          where q.id = ? and q.is_hidden = 0`,
     args: [id],
   });
   if (!question.rows.length) return c.json({ error: 'not_found' }, 404);
@@ -48,7 +51,7 @@ app.get('/v1/questions/:id', async (c) => {
   const answers = await db().execute({
     sql: `select ans.*, a.username as author
           from answers ans join actors a on a.id = ans.author_id
-          where ans.question_id = ?
+          where ans.question_id = ? and ans.is_hidden = 0
           order by ans.is_accepted desc, ans.verified_count desc, ans.created_at asc`,
     args: [id],
   });
@@ -67,7 +70,7 @@ app.get('/v1/search', async (c) => {
     sql: `select q.id, q.slug, q.title, q.answer_count, q.created_at
           from questions_fts f
           join questions q on q.id = f.rowid
-          where questions_fts match ?
+          where questions_fts match ? and q.is_hidden = 0
           order by bm25(questions_fts)
           limit 25`,
     args: [q],

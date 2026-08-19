@@ -19,6 +19,9 @@ importers:
       '@bufferoverride/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bufferoverride/reputation':
+        specifier: workspace:*
+        version: link:../../packages/reputation
       '@hono/node-server':
         specifier: ^1.19.7
         version: 1.19.17(hono@4.13.2)
@@ -52,6 +55,9 @@ importers:
       '@bufferoverride/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@bufferoverride/reputation':
+        specifier: workspace:*
+        version: link:../../packages/reputation
       '@bufferoverride/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -80,6 +86,9 @@ importers:
       '@bufferoverride/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bufferoverride/reputation':
+        specifier: workspace:*
+        version: link:../../packages/reputation
 
   packages/auth:
     dependencies:
@@ -103,6 +112,12 @@ importers:
         version: 0.15.15
 
   packages/design-tokens: {}
+
+  packages/reputation:
+    dependencies:
+      '@bufferoverride/db':
+        specifier: workspace:*
+        version: link:../db
 
   packages/ui:
     devDependencies:

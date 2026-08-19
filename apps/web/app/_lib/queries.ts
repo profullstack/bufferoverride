@@ -28,6 +28,7 @@ export async function listQuestions(limit = 25): Promise<QuestionRow[]> {
                  (select max(is_accepted) from answers where question_id = q.id) as is_canonical
           from questions q
           left join actors a on a.id = q.author_id
+          where q.is_hidden = 0
           order by q.created_at desc, q.id desc
           limit ?`,
     args: [limit],
@@ -45,7 +46,7 @@ export async function searchQuestions(q: string, limit = 25): Promise<QuestionRo
           from questions_fts f
           join questions q on q.id = f.rowid
           left join actors a on a.id = q.author_id
-          where questions_fts match ?
+          where questions_fts match ? and q.is_hidden = 0
           order by bm25(questions_fts)
           limit ?`,
     args: [q, limit],
@@ -73,7 +74,7 @@ export async function getQuestion(id: number, viewerId?: string) {
   const question = await db().execute({
     sql: `select q.*, a.username as author, a.kind as author_kind
           from questions q left join actors a on a.id = q.author_id
-          where q.id = ?`,
+          where q.id = ? and q.is_hidden = 0`,
     args: [id],
   });
   if (!question.rows.length) return null;
@@ -84,7 +85,7 @@ export async function getQuestion(id: number, viewerId?: string) {
                  ans.score, ans.author_id,
                  a.username as author, a.kind as author_kind
           from answers ans left join actors a on a.id = ans.author_id
-          where ans.question_id = ?
+          where ans.question_id = ? and ans.is_hidden = 0
           order by ans.is_stale asc, ans.is_accepted desc, ans.verified_count desc, ans.created_at asc`,
     args: [id],
   });

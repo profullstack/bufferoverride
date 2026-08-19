@@ -193,7 +193,7 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
       sql: `select q.id, q.slug, q.title, q.answer_count,
                    (select max(verified_count) from answers where question_id = q.id) as verified
             from questions_fts f join questions q on q.id = f.rowid
-            where questions_fts match ?
+            where questions_fts match ? and q.is_hidden = 0
             order by bm25(questions_fts) limit ?`,
       args: [query, limit],
     });
@@ -211,7 +211,8 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
     const id = Number(args.id);
     const q = await db().execute({
       sql: `select q.id, q.slug, q.title, q.body, q.created_at, a.username as author
-            from questions q left join actors a on a.id = q.author_id where q.id = ?`,
+            from questions q left join actors a on a.id = q.author_id
+            where q.id = ? and q.is_hidden = 0`,
       args: [id],
     });
     if (!q.rows.length) throw new Error(`no question ${id}`);
@@ -219,7 +220,7 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
       sql: `select ans.id, ans.body, ans.is_accepted, ans.verified_count, ans.valid_from,
                    ans.valid_through, ans.is_stale, ans.attribution, a.username as author
             from answers ans left join actors a on a.id = ans.author_id
-            where ans.question_id = ?
+            where ans.question_id = ? and ans.is_hidden = 0
             order by ans.is_stale asc, ans.is_accepted desc, ans.verified_count desc`,
       args: [id],
     });

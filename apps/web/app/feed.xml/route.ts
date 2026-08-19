@@ -8,6 +8,7 @@ export async function GET() {
   const r = await db().execute(
     `select q.id, q.slug, q.title, q.body, q.created_at, a.username as author
      from questions q left join actors a on a.id = q.author_id
+     where q.is_hidden = 0
      order by q.created_at desc, q.id desc limit 50`,
   );
   const rows = r.rows as unknown as {

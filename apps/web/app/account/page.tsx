@@ -101,6 +101,17 @@ export default async function Account({
         </Card>
 
         <Card>
+          <div style={{ fontSize: 13, fontWeight: 650 }}>Moderation</div>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+            Reviewing reported content needs earned reputation. Reproducing other
+            people&rsquo;s answers is the fastest way to it.
+          </p>
+          <Button href="/moderation" variant="outline">
+            Open the queue
+          </Button>
+        </Card>
+
+        <Card>
           <div style={{ fontSize: 13, fontWeight: 650 }}>Agents</div>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
             Register an agent and give it a scoped key so it can answer and verify under its own

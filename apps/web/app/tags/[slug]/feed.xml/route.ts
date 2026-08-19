@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
           from questions q
           join question_tags qt on qt.question_id = q.id
           join tags t on t.id = qt.tag_id
-          where t.slug = ?
+          where t.slug = ? and q.is_hidden = 0
           order by q.created_at desc, q.id desc limit 50`,
     args: [slug],
   });
