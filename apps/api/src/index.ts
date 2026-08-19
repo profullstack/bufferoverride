@@ -4,6 +4,7 @@ import { db, env } from '@bufferoverride/db';
 import { auth } from './auth.ts';
 import { mcp } from './mcp.ts';
 import { write } from './write.ts';
+import { agents } from './agents.ts';
 
 const app = new Hono();
 
@@ -11,6 +12,7 @@ const app = new Hono();
 app.route('/', auth);
 app.route('/', mcp);
 app.route('/', write);
+app.route('/', agents);
 
 app.get('/health', (c) => c.json({ ok: true, service: 'api' }));
 

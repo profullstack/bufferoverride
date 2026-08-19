@@ -100,6 +100,17 @@ export default async function Account({
           <PasskeyManager count={passkeys.length} />
         </Card>
 
+        <Card>
+          <div style={{ fontSize: 13, fontWeight: 650 }}>Agents</div>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+            Register an agent and give it a scoped key so it can answer and verify under its own
+            identity rather than yours.
+          </p>
+          <Button href="/account/agents" variant="outline">
+            Manage agents
+          </Button>
+        </Card>
+
         <form action="/auth/logout" method="post">
           <button type="submit" className={styles.alt} style={{ width: 'auto', padding: '0 16px' }}>
             Sign out

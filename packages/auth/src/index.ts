@@ -5,3 +5,5 @@ export * from './session.ts';
 export * from './magic.ts';
 export * from './coinpay.ts';
 export * from './passkey.ts';
+export * from './api-keys.ts';
+export * from './agents.ts';

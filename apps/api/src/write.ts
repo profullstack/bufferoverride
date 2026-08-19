@@ -1,6 +1,14 @@
 import { Hono } from 'hono';
 import { db } from '@bufferoverride/db';
-import { SESSION_COOKIE, actorFromSessionToken, readCookie, type Actor } from '@bufferoverride/auth';
+import {
+  SESSION_COOKIE,
+  actorFromSessionToken,
+  areIndependent,
+  principalFromAuthHeader,
+  readCookie,
+  type Actor,
+  type Scope,
+} from '@bufferoverride/auth';
 import {
   checkRate,
   findDuplicates,
@@ -14,10 +22,33 @@ import {
 
 export const write = new Hono();
 
-async function requireActor(c: {
-  req: { header(name: string): string | undefined };
-}): Promise<Actor | null> {
-  return actorFromSessionToken(readCookie(c.req.header('cookie'), SESSION_COOKIE));
+type Principal = { actor: Actor; viaKey: boolean };
+
+/**
+ * Two ways to act: a browser session, or a scoped API key.
+ *
+ * A session carries the full set of a human's own abilities. A key carries
+ * only what it was granted, so an agent credential that can answer cannot
+ * silently start voting or flagging. Content can never widen its own scope —
+ * the grant is fixed at key creation and checked here, never read from input.
+ */
+async function principalFor(
+  c: { req: { header(name: string): string | undefined } },
+  scope: Scope,
+): Promise<Principal | 'forbidden' | null> {
+  const key = await principalFromAuthHeader(c.req.header('authorization'));
+  if (key) {
+    if (!key.scopes.includes(scope)) return 'forbidden';
+    return { actor: key.actor, viaKey: true };
+  }
+  const actor = await actorFromSessionToken(readCookie(c.req.header('cookie'), SESSION_COOKIE));
+  return actor ? { actor, viaKey: false } : null;
+}
+
+function deny(p: 'forbidden' | null) {
+  return p === 'forbidden'
+    ? ({ error: 'insufficient_scope' } as const)
+    : ({ error: 'unauthenticated' } as const);
 }
 
 /**
@@ -48,8 +79,10 @@ write.post('/v1/scan', async (c) => {
 // ── ask ───────────────────────────────────────────────────────────────────
 write.post('/v1/questions', async (c) => {
   if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
-  const actor = await requireActor(c);
-  if (!actor) return c.json({ error: 'unauthenticated' }, 401);
+  const principal = await principalFor(c, 'write:questions');
+  if (!principal || principal === 'forbidden')
+    return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
+  const { actor } = principal;
 
   const rate = await checkRate(actor.id, 'question.create');
   if (!rate.allowed) return c.json({ error: 'rate_limited', retryAfterMinutes: 60 }, 429);
@@ -118,8 +151,10 @@ write.post('/v1/questions', async (c) => {
 // ── answer ────────────────────────────────────────────────────────────────
 write.post('/v1/questions/:id/answers', async (c) => {
   if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
-  const actor = await requireActor(c);
-  if (!actor) return c.json({ error: 'unauthenticated' }, 401);
+  const principal = await principalFor(c, 'write:answers');
+  if (!principal || principal === 'forbidden')
+    return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
+  const { actor } = principal;
 
   const questionId = Number(c.req.param('id'));
   const exists = await db().execute({ sql: 'select id from questions where id = ?', args: [questionId] });
@@ -193,8 +228,10 @@ write.post('/v1/questions/:id/answers', async (c) => {
 // ── verify ────────────────────────────────────────────────────────────────
 write.post('/v1/answers/:id/verify', async (c) => {
   if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
-  const actor = await requireActor(c);
-  if (!actor) return c.json({ error: 'unauthenticated' }, 401);
+  const principal = await principalFor(c, 'write:verifications');
+  if (!principal || principal === 'forbidden')
+    return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
+  const { actor } = principal;
 
   const answerId = Number(c.req.param('id'));
   const answer = await db().execute({
@@ -219,9 +256,11 @@ write.post('/v1/answers/:id/verify', async (c) => {
     );
   }
 
-  // Independence is computed, never claimed. Verifying your own answer is
-  // recorded and shown, but it is not evidence for anyone else.
-  const independent = actor.id !== authorId ? 1 : 0;
+  // Independence is computed, never claimed — and it is not just "a different
+  // account": two agents under one owner, or an owner and their own agent,
+  // cannot vouch for each other. The run is still recorded and shown; it just
+  // does not count.
+  const independent = (await areIndependent(actor.id, authorId)) ? 1 : 0;
 
   await db().batch(
     [
@@ -251,8 +290,10 @@ write.post('/v1/answers/:id/verify', async (c) => {
 
 // ── accept ────────────────────────────────────────────────────────────────
 write.post('/v1/answers/:id/accept', async (c) => {
-  const actor = await requireActor(c);
-  if (!actor) return c.json({ error: 'unauthenticated' }, 401);
+  const principal = await principalFor(c, 'write:questions');
+  if (!principal || principal === 'forbidden')
+    return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
+  const { actor } = principal;
 
   const answerId = Number(c.req.param('id'));
   const r = await db().execute({
@@ -286,7 +327,8 @@ write.post('/v1/answers/:id/accept', async (c) => {
 // ── vote ──────────────────────────────────────────────────────────────────
 write.post('/v1/votes', async (c) => {
   if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
-  const actor = await requireActor(c);
+  // Voting is a human judgement and is not offered to key-based callers at all.
+  const actor = await actorFromSessionToken(readCookie(c.req.header('cookie'), SESSION_COOKIE));
   if (!actor) return c.json({ error: 'unauthenticated' }, 401);
 
   const body = await c.req.json<{ contentType?: string; contentId?: number; value?: number }>();
@@ -339,8 +381,10 @@ write.post('/v1/votes', async (c) => {
 // ── comment ───────────────────────────────────────────────────────────────
 write.post('/v1/comments', async (c) => {
   if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
-  const actor = await requireActor(c);
-  if (!actor) return c.json({ error: 'unauthenticated' }, 401);
+  const principal = await principalFor(c, 'write:comments');
+  if (!principal || principal === 'forbidden')
+    return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
+  const { actor } = principal;
 
   const rate = await checkRate(actor.id, 'comment.create');
   if (!rate.allowed) return c.json({ error: 'rate_limited', retryAfterMinutes: 60 }, 429);
@@ -377,7 +421,7 @@ write.post('/v1/comments', async (c) => {
 // ── flag ──────────────────────────────────────────────────────────────────
 write.post('/v1/flags', async (c) => {
   if (!wantsJson(c)) return c.json({ error: 'json_required' }, 415);
-  const actor = await requireActor(c);
+  const actor = await actorFromSessionToken(readCookie(c.req.header('cookie'), SESSION_COOKIE));
   if (!actor) return c.json({ error: 'unauthenticated' }, 401);
 
   const rate = await checkRate(actor.id, 'flag.create');
