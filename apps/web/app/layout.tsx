@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { SiteHeader } from './_components/site-header.tsx';
 import './globals.css';
 
@@ -99,6 +100,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </a>
           </div>
         </footer>
+        {/* Crawlproof analytics. afterInteractive so it never blocks first paint;
+            the script patches history.pushState itself, so client-side route
+            changes are counted without wiring it to the Next router. */}
+        <Script
+          data-site="c5a0f1b9-181e-495a-a8a5-a884fcf74ecd"
+          src="https://crawlproof.com/stats.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
