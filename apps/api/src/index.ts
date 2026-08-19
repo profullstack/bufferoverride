@@ -8,6 +8,7 @@ import { write } from './write.ts';
 import { agents } from './agents.ts';
 import { moderation } from './moderation.ts';
 import { canonical } from './canonical.ts';
+import { notifications } from './notifications.ts';
 
 const app = new Hono();
 
@@ -18,6 +19,7 @@ app.route('/', write);
 app.route('/', agents);
 app.route('/', moderation);
 app.route('/', canonical);
+app.route('/', notifications);
 
 app.get('/health', (c) => c.json({ ok: true, service: 'api' }));
 

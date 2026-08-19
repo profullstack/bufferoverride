@@ -1,4 +1,6 @@
 import { Button, LogoIcon, SearchIcon } from '@bufferoverride/ui';
+import { AccountMenu } from './account-menu.tsx';
+import { CompactNav } from './compact-nav.tsx';
 import styles from './site-header.module.css';
 
 const NAV = [
@@ -15,8 +17,10 @@ export function SiteHeader({ current }: { current?: string }) {
       <div className={`wrap ${styles.bar}`}>
         <a className={styles.brand} href="/">
           <LogoIcon size={20} />
-          BufferOverride
+          <span className={styles.wordmark}>BufferOverride</span>
         </a>
+
+        <CompactNav links={NAV} />
 
         <nav className={styles.nav} aria-label="Primary">
           {NAV.map((item) => (
@@ -44,18 +48,17 @@ export function SiteHeader({ current }: { current?: string }) {
           <span className={styles.kbd}>/</span>
         </form>
 
-        {/* Deliberately not session-aware: reading the cookie here would make
-            every page dynamic, including the otherwise-static landing page.
-            /account resolves the session and redirects when signed out. */}
         <a href="/ask" className={styles.link}>
           Ask
         </a>
-        <a href="/login" className={styles.link}>
-          Sign in
-        </a>
-        <Button href="/docs/cli" variant="default" size="md">
-          Get the CLI
-        </Button>
+        {/* Resolves the session in the browser so the pages themselves can
+            stay static for crawlers — see AccountMenu. */}
+        <AccountMenu />
+        <span className={styles.cta}>
+          <Button href="/docs/cli" variant="default" size="md">
+            Get the CLI
+          </Button>
+        </span>
       </div>
     </header>
   );

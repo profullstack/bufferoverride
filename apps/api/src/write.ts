@@ -19,6 +19,7 @@ import {
   validateComment,
   validateQuestion,
 } from '@bufferoverride/core';
+import { notify, watch, watchersOf } from '@bufferoverride/notifications';
 
 export const write = new Hono();
 
@@ -144,6 +145,9 @@ write.post('/v1/questions', async (c) => {
     args: [actor.id, String(id)],
   });
   await db().batch(statements as never, 'write');
+  // Asking opts you into the thread; nobody has to find a "watch" button to
+  // hear that their own question was answered.
+  await watch(actor.id, id).catch(() => {});
 
   return c.json({ data: { id, slug: slugify(title), url: `/q/${id}/${slugify(title)}` } }, 201);
 });
@@ -222,6 +226,27 @@ write.post('/v1/questions/:id/answers', async (c) => {
     'write',
   );
 
+  // Notifications are queued after the write, never inside it: a slow mail
+  // provider must not hold a write transaction open.
+  const q = await db().execute({
+    sql: 'select slug, title from questions where id = ?',
+    args: [questionId],
+  });
+  const question = q.rows[0] as unknown as { slug: string; title: string };
+  const url = `/q/${questionId}/${question.slug}#answer-${id}`;
+
+  for (const watcherId of await watchersOf(questionId, actor.id)) {
+    await notify({
+      actorId: watcherId,
+      type: 'answer.new',
+      title: `New answer: ${question.title}`,
+      body: text.slice(0, 200),
+      url,
+      fromActorId: actor.id,
+    }).catch(() => {});
+  }
+  await watch(actor.id, questionId).catch(() => {});
+
   return c.json({ data: { id, anchor: `#answer-${id}` } }, 201);
 });
 
@@ -285,6 +310,25 @@ write.post('/v1/answers/:id/verify', async (c) => {
     'write',
   );
 
+  if (independent === 1 && result === 'pass') {
+    const ctx = await db().execute({
+      sql: `select q.id as qid, q.slug, q.title from answers ans
+            join questions q on q.id = ans.question_id where ans.id = ?`,
+      args: [answerId],
+    });
+    const row = ctx.rows[0] as unknown as { qid: number; slug: string; title: string } | undefined;
+    if (row) {
+      await notify({
+        actorId: authorId,
+        type: 'answer.verified',
+        title: `Your answer was reproduced: ${row.title}`,
+        body: `Independently reproduced on ${environment}.`,
+        url: `/q/${row.qid}/${row.slug}#answer-${answerId}`,
+        fromActorId: actor.id,
+      }).catch(() => {});
+    }
+  }
+
   return c.json({ data: { answerId, result, independent: independent === 1 } }, 201);
 });
 
@@ -321,6 +365,24 @@ write.post('/v1/answers/:id/accept', async (c) => {
     ] as never,
     'write',
   );
+  const ctx = await db().execute({
+    sql: `select ans.author_id, q.id as qid, q.slug, q.title from answers ans
+          join questions q on q.id = ans.question_id where ans.id = ?`,
+    args: [answerId],
+  });
+  const accepted = ctx.rows[0] as unknown as
+    | { author_id: string; qid: number; slug: string; title: string }
+    | undefined;
+  if (accepted) {
+    await notify({
+      actorId: accepted.author_id,
+      type: 'answer.accepted',
+      title: `Your answer was accepted: ${accepted.title}`,
+      url: `/q/${accepted.qid}/${accepted.slug}#answer-${answerId}`,
+      fromActorId: actor.id,
+    }).catch(() => {});
+  }
+
   return c.json({ data: { accepted: answerId } });
 });
 
@@ -415,6 +477,31 @@ write.post('/v1/comments', async (c) => {
     ] as never,
     'write',
   );
+  const target =
+    contentType === 'answer'
+      ? await db().execute({
+          sql: `select ans.author_id, q.id as qid, q.slug, q.title from answers ans
+                join questions q on q.id = ans.question_id where ans.id = ?`,
+          args: [contentId],
+        })
+      : await db().execute({
+          sql: 'select author_id, id as qid, slug, title from questions where id = ?',
+          args: [contentId],
+        });
+  const row = target.rows[0] as unknown as
+    | { author_id: string; qid: number; slug: string; title: string }
+    | undefined;
+  if (row) {
+    await notify({
+      actorId: row.author_id,
+      type: 'comment.new',
+      title: `New comment on: ${row.title}`,
+      body: text.slice(0, 200),
+      url: `/q/${row.qid}/${row.slug}`,
+      fromActorId: actor.id,
+    }).catch(() => {});
+  }
+
   return c.json({ ok: true }, 201);
 });
 

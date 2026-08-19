@@ -14,6 +14,14 @@
   height: 60px;
 }
 
+/* Below ~400px the wordmark is the only thing that can go without removing a
+   destination. The mark stays, so the link is still recognisable. */
+.wordmark { display: none; }
+
+@media (min-width: 400px) {
+  .wordmark { display: inline; }
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -31,7 +39,9 @@
   gap: 2px;
 }
 
-@media (min-width: 900px) {
+/* The nav appears only once it fits beside the account menu and the CTA;
+   at 900 it fit only by pushing the CTA off the edge. */
+@media (min-width: 1024px) {
   .nav { display: flex; }
   .bar { gap: 32px; }
 }
@@ -53,6 +63,21 @@
 
 .spacer { flex-grow: 1; }
 
+/* Secondary call to action: the landing hero and the docs both carry it, so it
+   is the first thing to go when width is short. */
+.cta { display: none; }
+
+/* The disclosure that replaces the inline nav below its breakpoint. */
+.compact { display: flex; }
+
+@media (min-width: 1024px) {
+  .compact { display: none; }
+}
+
+@media (min-width: 720px) {
+  .cta { display: inline-flex; }
+}
+
 .search {
   display: none;
   align-items: center;
@@ -66,7 +91,10 @@
   color: var(--text-muted);
 }
 
-@media (min-width: 1100px) {
+/* The search field only appears once there is genuinely room for it beside the
+   nav, the account menu and the CLI button. At 1100 it fit only by pushing
+   them off the right edge. */
+@media (min-width: 1280px) {
   .search { display: flex; }
 }
 

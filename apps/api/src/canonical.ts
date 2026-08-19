@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '@bufferoverride/db';
 import { SESSION_COOKIE, actorFromSessionToken, readCookie } from '@bufferoverride/auth';
 import { scanSecrets } from '@bufferoverride/core';
+import { notify } from '@bufferoverride/notifications';
 
 export const canonical = new Hono();
 
@@ -189,6 +190,28 @@ canonical.post('/v1/questions/:id/canonical/challenge', async (c) => {
     ] as never,
     'write',
   );
+
+  const contributors = await db().execute({
+    sql: `select distinct rev.actor_id, q.slug, q.title
+          from canonical_answer_revisions rev
+          join questions q on q.id = rev.question_id
+          where rev.question_id = ?`,
+    args: [questionId],
+  });
+  for (const row of contributors.rows as unknown as {
+    actor_id: string;
+    slug: string;
+    title: string;
+  }[]) {
+    await notify({
+      actorId: row.actor_id,
+      type: 'canonical.challenged',
+      title: `Canonical answer challenged: ${row.title}`,
+      body: reason.slice(0, 200),
+      url: `/q/${questionId}/${row.slug}/canonical`,
+      fromActorId: actor.id,
+    }).catch(() => {});
+  }
 
   return c.json({ ok: true, state: 'stale' }, 201);
 });

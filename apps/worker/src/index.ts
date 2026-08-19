@@ -1,5 +1,6 @@
 import { db, env } from '@bufferoverride/db';
 import { recomputeReputation } from '@bufferoverride/reputation';
+import { flushEmails } from '@bufferoverride/notifications';
 
 const TICK_MS = Number(env('WORKER_TICK_MS') ?? 60_000);
 // Reputation is a whole-table recomputation, so it runs on its own slower beat
@@ -52,6 +53,11 @@ async function tick(): Promise<void> {
     ],
     'write',
   );
+
+  // Queued notification email, sent here so no request path waits on a
+  // third-party API.
+  const emailed = await flushEmails();
+  if (emailed > 0) console.log(`[worker] sent ${emailed} notification emails`);
 
   if (ticks % REPUTATION_EVERY === 1) {
     const result = await recomputeReputation();

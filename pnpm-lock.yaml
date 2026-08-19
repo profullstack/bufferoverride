@@ -19,6 +19,9 @@ importers:
       '@bufferoverride/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bufferoverride/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@bufferoverride/reputation':
         specifier: workspace:*
         version: link:../../packages/reputation
@@ -55,6 +58,9 @@ importers:
       '@bufferoverride/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@bufferoverride/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@bufferoverride/reputation':
         specifier: workspace:*
         version: link:../../packages/reputation
@@ -86,6 +92,9 @@ importers:
       '@bufferoverride/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bufferoverride/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@bufferoverride/reputation':
         specifier: workspace:*
         version: link:../../packages/reputation
@@ -112,6 +121,12 @@ importers:
         version: 0.15.15
 
   packages/design-tokens: {}
+
+  packages/notifications:
+    dependencies:
+      '@bufferoverride/db':
+        specifier: workspace:*
+        version: link:../db
 
   packages/reputation:
     dependencies:

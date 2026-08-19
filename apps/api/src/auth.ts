@@ -26,6 +26,7 @@ import {
   verifyAuthentication,
   verifyRegistration,
 } from '@bufferoverride/auth';
+import { unreadCount } from '@bufferoverride/notifications';
 
 export const auth = new Hono();
 
@@ -187,6 +188,7 @@ auth.get('/v1/auth/session', async (c) => {
     actor: { username: actor.username, displayName: actor.display_name, kind: actor.kind },
     identities: await linkedIdentities(actor.id),
     passkeys: (await listPasskeys(actor.id)).length,
+    unread: await unreadCount(actor.id),
   });
 });
 
