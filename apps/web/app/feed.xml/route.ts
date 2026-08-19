@@ -6,13 +6,13 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const base = baseUrl();
   const r = await db().execute(
-    `select q.id, q.slug, q.title, q.body, q.created_at, a.username as author
+    `select q.code, q.slug, q.title, q.body, q.created_at, a.username as author
      from questions q left join actors a on a.id = q.author_id
      where q.is_hidden = 0
      order by q.created_at desc, q.id desc limit 50`,
   );
   const rows = r.rows as unknown as {
-    id: number;
+    code: string;
     slug: string;
     title: string;
     body: string;
@@ -24,8 +24,8 @@ export async function GET() {
     .map(
       (q) => `    <item>
       <title>${xml(q.title)}</title>
-      <link>${base}/q/${q.id}/${xml(q.slug)}</link>
-      <guid isPermaLink="true">${base}/q/${q.id}/${xml(q.slug)}</guid>
+      <link>${base}/q/${q.code}/${xml(q.slug)}</link>
+      <guid isPermaLink="true">${base}/q/${q.code}/${xml(q.slug)}</guid>
       <pubDate>${rfc822(q.created_at)}</pubDate>
       <description>${xml(q.body.slice(0, 500))}</description>
     </item>`,

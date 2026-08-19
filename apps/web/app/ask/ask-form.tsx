@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Badge, VersionPill } from '@bufferoverride/ui';
 import styles from './ask.module.css';
 
-type Dupe = { id: number; slug: string; title: string; answer_count: number; verified_count: number | null };
+type Dupe = { id: number; code: string; slug: string; title: string; answer_count: number; verified_count: number | null };
 type Finding = { kind: string; line: number; preview: string };
 type Invalid = { field: string; message: string };
 
@@ -138,7 +138,7 @@ export function AskForm() {
           </span>
           {dupes.map((d) => (
             <div key={d.id} className={styles.dupeRow}>
-              <a href={`/q/${d.id}/${d.slug}`} target="_blank" rel="noreferrer">
+              <a href={`/q/${d.code}/${d.slug}`} target="_blank" rel="noreferrer">
                 {d.title}
               </a>
               <span className={styles.dupeMeta}>

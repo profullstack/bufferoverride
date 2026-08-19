@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import {
   SESSION_COOKIE,
   actorFromSessionToken,
@@ -101,7 +101,16 @@ auth.get('/auth/coinpay/start', async (c) => {
   }
 });
 
-auth.get('/auth/coinpay/callback', async (c) => {
+/**
+ * One handler, two paths.
+ *
+ * The registered redirect URI is /api/v1/coinpay/callback (see
+ * COINPAY_REDIRECT_PATH); /auth/coinpay/callback is what earlier builds sent
+ * and is kept so a sign-in already in flight during a deploy still lands.
+ * Requests to /api/v1/... arrive here rewritten to /v1/..., so that is the
+ * path this route is registered on.
+ */
+const coinpayCallback = async (c: Context) => {
   const code = c.req.query('code');
   const state = c.req.query('state');
   const stored = readState(readCookie(c.req.header('cookie'), COINPAY_STATE_COOKIE));
@@ -134,7 +143,10 @@ auth.get('/auth/coinpay/callback', async (c) => {
     }
     return c.redirect('/login?error=coinpay_failed', 302);
   }
-});
+};
+
+auth.get('/v1/coinpay/callback', coinpayCallback);
+auth.get('/auth/coinpay/callback', coinpayCallback);
 
 auth.post('/auth/coinpay/unlink', async (c) => {
   const actor = await currentActor(c);

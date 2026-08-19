@@ -12,7 +12,7 @@ export async function GET() {
 
   const [questions, tags] = await Promise.all([
     db().execute(
-      `select id, slug, updated_at from questions where is_hidden = 0
+      `select code, slug, updated_at from questions where is_hidden = 0
        order by created_at desc, id desc limit 5000`,
     ),
     db().execute('select slug from tags order by slug'),
@@ -25,9 +25,9 @@ export async function GET() {
     ...(tags.rows as unknown as { slug: string }[]).map(
       (t) => `  <url><loc>${base}/tags/${xml(t.slug)}</loc></url>`,
     ),
-    ...(questions.rows as unknown as { id: number; slug: string; updated_at: string }[]).map(
+    ...(questions.rows as unknown as { code: string; slug: string; updated_at: string }[]).map(
       (q) =>
-        `  <url><loc>${base}/q/${q.id}/${xml(q.slug)}</loc><lastmod>${xml(
+        `  <url><loc>${base}/q/${q.code}/${xml(q.slug)}</loc><lastmod>${xml(
           q.updated_at.slice(0, 10),
         )}</lastmod></url>`,
     ),

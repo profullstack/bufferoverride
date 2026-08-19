@@ -25,7 +25,7 @@ export function GET() {
 
 ## Citing
 
-Cite the canonical question URL, ${base}/q/{id}/{slug}. Include the version
+Cite the canonical question URL, ${base}/q/{code}/{slug}. Include the version
 range the answer claims; an answer that is correct for one release is often
 wrong for the next.
 

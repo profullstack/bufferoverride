@@ -9,6 +9,7 @@ type Flag = {
   id: number;
   content_type: string;
   content_id: number;
+  content_code: string | null;
   reason: string;
   detail: string | null;
   reporter: string | null;
@@ -60,7 +61,7 @@ export function Queue({ flags }: { flags: Flag[] }) {
             <a
               className="mono"
               style={{ fontSize: 12.5 }}
-              href={f.content_type === 'question' ? `/q/${f.content_id}/x` : '#'}
+              href={f.content_type === 'question' && f.content_code ? `/q/${f.content_code}/x` : '#'}
             >
               {f.content_type} #{f.content_id}
             </a>

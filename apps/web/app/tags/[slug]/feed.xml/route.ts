@@ -8,7 +8,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const base = baseUrl();
 
   const r = await db().execute({
-    sql: `select q.id, q.slug, q.title, q.body, q.created_at
+    sql: `select q.code, q.slug, q.title, q.body, q.created_at
           from questions q
           join question_tags qt on qt.question_id = q.id
           join tags t on t.id = qt.tag_id

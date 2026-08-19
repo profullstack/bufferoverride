@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { db } from '@bufferoverride/db';
+import { parseReference } from '@bufferoverride/core';
 import { Card, IdentityChip } from '@bufferoverride/ui';
 import { daysAgo } from '../../../../_lib/queries.ts';
 import styles from '../../../../list.module.css';
@@ -11,11 +12,18 @@ type Params = { params: Promise<{ id: string; slug: string }> };
 
 export default async function Revisions({ params }: Params) {
   const { id, slug } = await params;
-  const qid = Number(id);
+  // The route parameter is a code; a numeric id still resolves so older links
+  // keep working. Either way the row id is what the queries below need.
+  const reference = parseReference(id);
+  if (!reference) notFound();
 
-  const q = await db().execute({ sql: 'select id, title from questions where id = ?', args: [qid] });
+  const q = await db().execute({
+    sql: `select id, code, title from questions where ${reference.kind === 'code' ? 'code = ?' : 'id = ?'}`,
+    args: [reference.kind === 'code' ? reference.code : reference.id],
+  });
   if (!q.rows.length) notFound();
-  const question = q.rows[0] as unknown as { id: number; title: string };
+  const question = q.rows[0] as unknown as { id: number; code: string; title: string };
+  const qid = question.id;
 
   const r = await db().execute({
     sql: `select r.content_type, r.content_id, r.comment, r.created_at,
@@ -40,7 +48,7 @@ export default async function Revisions({ params }: Params) {
     <div className="wrap">
       <div className={styles.page} style={{ maxWidth: 760 }}>
         <nav className={styles.head} aria-label="Breadcrumb">
-          <a href={`/q/${question.id}/${slug}`} style={{ fontSize: 13 }}>
+          <a href={`/q/${question.code}/${slug}`} style={{ fontSize: 13 }}>
             ← {question.title}
           </a>
         </nav>

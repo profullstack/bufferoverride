@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { isLegacyId } from '@bufferoverride/core';
 import { SESSION_COOKIE, actorFromSessionToken } from '@bufferoverride/auth';
 import { db } from '@bufferoverride/db';
 import {
@@ -28,13 +29,79 @@ export const dynamic = 'force-dynamic';
 
 type Params = { params: Promise<{ id: string; slug: string }> };
 
+/**
+ * A description a search engine will actually show.
+ *
+ * The body is markdown written for a developer: fenced code, stack traces,
+ * headings. Slicing 180 characters off the front of that yields half a code
+ * fence ending mid-word, which is what a search result was showing. So the
+ * markup comes out, the prose is preferred over the code, and the cut lands on
+ * a word boundary.
+ */
+function summarise(body: string, limit = 155): string {
+  const prose = body
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<\/?[a-z][^>]*>/gi, ' ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[*_>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const source = prose.length > 40 ? prose : body.replace(/\s+/g, ' ').trim();
+  if (source.length <= limit) return source;
+  const cut = source.slice(0, limit);
+  const boundary = cut.lastIndexOf(' ');
+  return `${(boundary > limit * 0.6 ? cut.slice(0, boundary) : cut).replace(/[,;:.\s]+$/, '')}…`;
+}
+
+/**
+ * The title carries what the asker wrote plus the one fact that distinguishes
+ * this page in a list of ten blue links: whether the thing has a verified
+ * answer. "Sqlite3 one-write limitation" and "Sqlite3 one-write limitation —
+ * answered, 2 independent reproductions" compete very differently, and the
+ * second is true or it does not get said.
+ */
+function titleFor(question: { title: string }, answers: AnswerRow[]): string {
+  const verified = answers.reduce((best, a) => Math.max(best, a.verified_count ?? 0), 0);
+  const accepted = answers.some((a) => a.is_accepted);
+
+  if (verified > 0) {
+    return `${question.title} — answered, verified ${verified}${verified === 1 ? ' time' : ' times'}`;
+  }
+  if (accepted) return `${question.title} — answered`;
+  if (answers.length) return `${question.title} — ${answers.length} answer${answers.length === 1 ? '' : 's'}`;
+  return question.title;
+}
+
 export async function generateMetadata({ params }: Params) {
   const { id } = await params;
-  const data = await getQuestion(Number(id));
-  if (!data) return { title: 'Not found' };
+  const data = await getQuestion(id);
+  if (!data) return { title: 'Not found', robots: { index: false, follow: true } };
+
+  const { question: q, answers } = data;
+  const path = `/q/${q.code}/${q.slug}`;
+  const description = summarise(q.body);
+
   return {
-    title: data.question.title,
-    description: data.question.body.slice(0, 180),
+    title: titleFor(q, answers),
+    description,
+    // One address per question. Without this, the legacy numeric URL, a stale
+    // slug and the code URL are three pages to a crawler, splitting whatever
+    // authority the page earns three ways.
+    alternates: { canonical: path },
+    openGraph: {
+      type: 'article',
+      title: q.title,
+      description,
+      url: path,
+      publishedTime: q.created_at,
+      modifiedTime: q.updated_at ?? q.created_at,
+      authors: q.author ? [q.author] : undefined,
+    },
+    twitter: { card: 'summary', title: q.title, description },
   };
 }
 
@@ -52,11 +119,19 @@ function kindOf(k: string | null): 'human' | 'agent' | 'organization' {
 }
 
 export default async function QuestionPage({ params }: Params) {
-  const { id } = await params;
+  const { id, slug } = await params;
   const jar = await cookies();
   const viewer = await actorFromSessionToken(jar.get(SESSION_COOKIE)?.value);
-  const data = await getQuestion(Number(id), viewer?.id);
+  const data = await getQuestion(id, viewer?.id);
   if (!data) notFound();
+
+  // Every question has exactly one address. A numeric id is an URL from before
+  // codes existed, and a stale slug is a title that has since been edited;
+  // both resolve, and both redirect permanently rather than serving a second
+  // copy of the page for a crawler to weigh separately.
+  if (isLegacyId(id) || slug !== data.question.slug) {
+    permanentRedirect(`/q/${data.question.code}/${data.question.slug}`);
+  }
 
   const { question: q, answers, verifications, tags, comments, votes, canonical, contributors } = data;
   const signedIn = !!viewer;
@@ -83,24 +158,46 @@ export default async function QuestionPage({ params }: Params) {
   const best = pickCanonical(answers);
   const independent = verifications.filter((v) => v.is_independent && v.result === 'pass').length;
 
+  const canonicalUrl = `https://bufferoverride.com/q/${q.code}/${q.slug}`;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'QAPage',
+    // The page URL belongs in the graph: without it a QAPage cannot be tied
+    // back to the address that should rank for it.
+    '@id': canonicalUrl,
+    url: canonicalUrl,
     mainEntity: {
       '@type': 'Question',
+      '@id': `${canonicalUrl}#question`,
       name: q.title,
       text: q.body,
+      url: canonicalUrl,
       dateCreated: q.created_at,
+      dateModified: q.updated_at ?? q.created_at,
       answerCount: answers.length,
       author: q.author ? { '@type': 'Person', name: q.author } : undefined,
       acceptedAnswer: canonical
-        ? { '@type': 'Answer', text: canonical.body }
+        ? { '@type': 'Answer', text: canonical.body, url: `${canonicalUrl}/canonical` }
         : best
-          ? { '@type': 'Answer', text: best.body, upvoteCount: best.verified_count }
+          ? {
+              '@type': 'Answer',
+              text: best.body,
+              url: `${canonicalUrl}#answer-${best.id}`,
+              upvoteCount: best.verified_count,
+              dateCreated: best.created_at,
+              author: best.author ? { '@type': 'Person', name: best.author } : undefined,
+            }
           : undefined,
       suggestedAnswer: answers
         .filter((a) => a.id !== best?.id)
-        .map((a) => ({ '@type': 'Answer', text: a.body })),
+        .map((a) => ({
+          '@type': 'Answer',
+          text: a.body,
+          url: `${canonicalUrl}#answer-${a.id}`,
+          upvoteCount: a.verified_count,
+          dateCreated: a.created_at,
+          author: a.author ? { '@type': 'Person', name: a.author } : undefined,
+        })),
     },
   };
 
@@ -121,7 +218,7 @@ export default async function QuestionPage({ params }: Params) {
                 <span>/</span>
               </>
             ) : null}
-            <span className="mono">#{q.id}</span>
+            <span className="mono">{q.code}</span>
           </nav>
 
           <h1 className={styles.h1}>{q.title}</h1>

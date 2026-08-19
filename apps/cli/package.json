@@ -1,0 +1,20 @@
+{
+  "name": "@profullstack/bufferoverride",
+  "version": "0.1.0",
+  "description": "bo — capture a real failure with its environment, redact the secrets, and find the existing answer before you ask.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "bo": "bin/bo.js" },
+  "main": "src/main.js",
+  "exports": { ".": "./src/main.js" },
+  "files": ["bin", "src", "README.md"],
+  "engines": { "node": ">=20" },
+  "keywords": ["cli", "debugging", "errors", "mcp", "bufferoverride"],
+  "homepage": "https://bufferoverride.com/docs/cli",
+  "repository": { "type": "git", "url": "git+https://github.com/profullstack/bufferoverride.git", "directory": "apps/cli" },
+  "bugs": { "url": "https://github.com/profullstack/bufferoverride/issues" },
+  "scripts": {
+    "test": "node --test",
+    "bo": "node bin/bo.js"
+  }
+}

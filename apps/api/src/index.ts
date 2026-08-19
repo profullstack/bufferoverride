@@ -1,13 +1,14 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { db, env } from '@bufferoverride/db';
-import { ftsAttempts } from '@bufferoverride/core';
+import { ftsAttempts, parseReference } from '@bufferoverride/core';
 import { auth } from './auth.ts';
 import { mcp } from './mcp.ts';
 import { write } from './write.ts';
 import { agents } from './agents.ts';
 import { moderation } from './moderation.ts';
 import { canonical } from './canonical.ts';
+import { cli } from './cli.ts';
 import { notifications } from './notifications.ts';
 
 const app = new Hono();
@@ -19,6 +20,7 @@ app.route('/', write);
 app.route('/', agents);
 app.route('/', moderation);
 app.route('/', canonical);
+app.route('/', cli);
 app.route('/', notifications);
 
 app.get('/health', (c) => c.json({ ok: true, service: 'api' }));
@@ -31,7 +33,7 @@ app.get('/health', (c) => c.json({ ok: true, service: 'api' }));
 app.get('/v1/questions', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 25), 100);
   const result = await db().execute({
-    sql: `select q.id, q.slug, q.title, q.answer_count, q.created_at,
+    sql: `select q.code, q.slug, q.title, q.answer_count, q.created_at,
                  a.username as author, q.attribution
           from questions q
           join actors a on a.id = q.author_id
@@ -43,22 +45,29 @@ app.get('/v1/questions', async (c) => {
   return c.json({ data: result.rows });
 });
 
+/**
+ * One question, addressed by its code — or by the numeric id it used to have,
+ * which still resolves so that anything already linked keeps working.
+ */
 app.get('/v1/questions/:id', async (c) => {
-  const id = Number(c.req.param('id'));
+  const reference = parseReference(c.req.param('id'));
+  if (!reference) return c.json({ error: 'not_found' }, 404);
+
   const question = await db().execute({
     sql: `select q.*, a.username as author
           from questions q join actors a on a.id = q.author_id
-          where q.id = ? and q.is_hidden = 0`,
-    args: [id],
+          where ${reference.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and q.is_hidden = 0`,
+    args: [reference.kind === 'code' ? reference.code : reference.id],
   });
   if (!question.rows.length) return c.json({ error: 'not_found' }, 404);
+  const row = question.rows[0] as unknown as { id: number };
 
   const answers = await db().execute({
     sql: `select ans.*, a.username as author
           from answers ans join actors a on a.id = ans.author_id
           where ans.question_id = ? and ans.is_hidden = 0
           order by ans.is_accepted desc, ans.verified_count desc, ans.created_at asc`,
-    args: [id],
+    args: [row.id],
   });
   return c.json({ data: { ...question.rows[0], answers: answers.rows } });
 });
@@ -78,7 +87,7 @@ app.get('/v1/search', async (c) => {
   let rows: unknown[] = [];
   for (const match of attempts) {
     const result = await db().execute({
-    sql: `select q.id, q.slug, q.title, q.answer_count, q.created_at
+    sql: `select q.code, q.slug, q.title, q.answer_count, q.created_at
           from questions_fts f
           join questions q on q.id = f.rowid
           where questions_fts match ? and q.is_hidden = 0
