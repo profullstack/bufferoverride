@@ -15,9 +15,28 @@ export function SiteHeader({ current }: { current?: string }) {
   return (
     <header className={styles.header}>
       <div className={`wrap ${styles.bar}`}>
-        <a className={styles.brand} href="/">
-          <img className={styles.mark} src="/icons/icon-192x192.png" alt="" width={192} height={192} />
-          <span className={styles.wordmark}>BufferOverride</span>
+        <a className={styles.brand} href="/" aria-label="BufferOverride">
+          <img
+            className={styles.logoMark}
+            src="/icons/icon-192x192.png"
+            alt=""
+            width={192}
+            height={192}
+          />
+          <img
+            className={`${styles.logo} ${styles.logoLight}`}
+            src="/logo-header.png"
+            alt=""
+            width={520}
+            height={130}
+          />
+          <img
+            className={`${styles.logo} ${styles.logoDark}`}
+            src="/logo-header-dark.png"
+            alt=""
+            width={520}
+            height={130}
+          />
         </a>
 
         <CompactNav links={NAV} />

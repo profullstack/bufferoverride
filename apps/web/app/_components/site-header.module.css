@@ -14,38 +14,37 @@
   height: 76px;
 }
 
-/* Below ~400px the wordmark is the only thing that can go without removing a
-   destination. The mark stays, so the link is still recognisable. */
-.wordmark { display: none; }
+/* The lockup carries the wordmark, so no text sits beside it.
+ *
+ * Two renditions rather than one: the supplied artwork sets "Buffer" in a very
+ * dark navy that all but disappears on the dark surface, so the dark variant
+ * lifts only that lettering. The toggle mirrors the token system exactly —
+ * system preference, unless an explicit data-theme overrides it in either
+ * direction. */
+/* The lockup is 4:1, so on a phone it would crowd out the navigation. Below
+   480px the mark stands alone; above it the full lockup appears. */
+.logo { display: none; width: auto; height: 40px; }
+.logoMark { display: block; width: 40px; height: 40px; flex-shrink: 0; }
 
-@media (min-width: 400px) {
-  .wordmark { display: inline; }
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-primary);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.022em;
-  white-space: nowrap;
-}
-
-/* The mark carries the brand, so it is sized to be seen. Served from the
-   192px rendition rather than the 1254px source: at 44px CSS that is still
-   sharp on a 3x screen and costs 9KB instead of 820KB. */
-.mark {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  object-fit: contain;
+@media (min-width: 480px) {
+  .logo { display: block; }
+  .logoMark { display: none; }
 }
 
 @media (min-width: 700px) {
-  .mark { width: 52px; height: 52px; }
-  .brand { font-size: 22px; }
+  .logo { height: 48px; }
+}
+
+.logoDark { display: none; }
+
+@media (min-width: 480px) {
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .logoLight { display: none; }
+    :global(:root:not([data-theme='light'])) .logoDark { display: block; }
+  }
+
+  :global(:root[data-theme='dark']) .logoLight { display: none; }
+  :global(:root[data-theme='dark']) .logoDark { display: block; }
 }
 
 .nav {
