@@ -3,6 +3,7 @@ import { toFtsQuery } from './fts.ts';
 
 export type DuplicateHit = {
   id: number;
+  code: string;
   slug: string;
   title: string;
   answer_count: number;
@@ -27,7 +28,7 @@ export async function findDuplicates(draftTitle: string, limit = 5): Promise<Dup
 
   try {
     const r = await db().execute({
-      sql: `select q.id, q.slug, q.title, q.answer_count,
+      sql: `select q.id, q.code, q.slug, q.title, q.answer_count,
                    (select max(verified_count) from answers where question_id = q.id) as verified_count
             from questions_fts f
             join questions q on q.id = f.rowid

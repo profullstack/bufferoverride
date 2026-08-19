@@ -61,3 +61,9 @@
 .commentWho { font-weight: 600; color: var(--text-primary); }
 .commentMeta { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
 .link { background: none; border: 0; padding: 0; color: var(--accent-primary); font-family: inherit; font-size: 12.5px; cursor: pointer; }
+
+/* A comment renders markdown, but inline: it is one remark, not a document,
+   so its blocks must not open up the thread's spacing. */
+.commentBody { display: inline; font-size: inherit; line-height: inherit; }
+.commentBody :global(p) { display: inline; margin: 0; }
+.commentBody :global(pre) { margin: 6px 0; }

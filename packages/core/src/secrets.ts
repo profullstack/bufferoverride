@@ -16,8 +16,10 @@ const RULES: Rule[] = [
   { kind: 'GitHub token', re: /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g },
   { kind: 'Slack token', re: /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g },
   { kind: 'Stripe key', re: /\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b/g },
-  { kind: 'OpenAI key', re: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g },
+  // Before the OpenAI rule: `sk-ant-…` matches both, and whichever runs first
+  // supplies the label the author reads.
   { kind: 'Anthropic key', re: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/g },
+  { kind: 'OpenAI key', re: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g },
   { kind: 'Resend key', re: /\bre_[A-Za-z0-9]{20,}\b/g },
   { kind: 'Google API key', re: /\bAIza[0-9A-Za-z_-]{35}\b/g },
   { kind: 'private key block', re: /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/g },

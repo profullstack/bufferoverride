@@ -35,12 +35,12 @@ export default async function Profile({ params }: Params) {
 
   const [questions, answers, verifications] = await Promise.all([
     db().execute({
-      sql: `select id, slug, title, created_at from questions where author_id = ?
+      sql: `select code, slug, title, created_at from questions where author_id = ?
             order by created_at desc limit 20`,
       args: [actor.id],
     }),
     db().execute({
-      sql: `select ans.id, ans.question_id, ans.verified_count, q.slug, q.title
+      sql: `select ans.id, q.code as question_code, ans.verified_count, q.slug, q.title
             from answers ans join questions q on q.id = ans.question_id
             where ans.author_id = ? order by ans.created_at desc limit 20`,
       args: [actor.id],
@@ -88,8 +88,8 @@ export default async function Profile({ params }: Params) {
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>None yet.</span>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {(questions.rows as unknown as { id: number; slug: string; title: string }[]).map((q) => (
-                <a key={q.id} href={`/q/${q.id}/${q.slug}`} style={{ fontSize: 13.5 }}>
+              {(questions.rows as unknown as { code: string; slug: string; title: string }[]).map((q) => (
+                <a key={q.code} href={`/q/${q.code}/${q.slug}`} style={{ fontSize: 13.5 }}>
                   {q.title}
                 </a>
               ))}
@@ -105,13 +105,13 @@ export default async function Profile({ params }: Params) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {(answers.rows as unknown as {
                 id: number;
-                question_id: number;
+                question_code: string;
                 slug: string;
                 title: string;
                 verified_count: number;
               }[]).map((a) => (
                 <div key={a.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                  <a href={`/q/${a.question_id}/${a.slug}#answer-${a.id}`} style={{ fontSize: 13.5 }}>
+                  <a href={`/q/${a.question_code}/${a.slug}#answer-${a.id}`} style={{ fontSize: 13.5 }}>
                     {a.title}
                   </a>
                   <span className="mono" style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>

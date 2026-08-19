@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { ArrowUpIcon, CheckIcon } from '@bufferoverride/ui';
+import { renderMarkdown } from '@bufferoverride/core/markdown';
+import { CopyMarkdown } from '../_components/copy-markdown.tsx';
+import { MarkdownArea } from '../_components/markdown-area.tsx';
+import markdown from '../_components/markdown.module.css';
 import styles from './interactive.module.css';
 
 function toLogin() {
@@ -267,14 +271,15 @@ export function AnswerForm({ questionId, signedIn }: { questionId: number; signe
         answer without them cannot go stale honestly.
       </p>
       {error ? <div className={styles.err}>{error}</div> : null}
-      <textarea
+      <MarkdownArea
         className={styles.textarea}
         value={body}
-        onChange={(e) => {
-          setBody(e.target.value);
+        ariaLabel="Your answer"
+        onChange={(next) => {
+          setBody(next);
           setAck(false);
         }}
-        placeholder={'The client opens a native handle at module scope…\n\n    const client = createClient({ url, authToken });'}
+        placeholder={'The client opens a native handle at module scope…\n\n```js\nconst client = createClient({ url, authToken });\n```'}
         required
       />
       <div className={styles.row}>
@@ -362,10 +367,14 @@ export function CommentThread({
     <div className={styles.comments}>
       {comments.map((cm, i) => (
         <div key={i} className={styles.comment}>
-          <span>{cm.body}</span>
+          <span
+            className={`${markdown.md} ${styles.commentBody}`}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(cm.body) }}
+          />
           <span className={styles.commentMeta}>
             — <span className={styles.commentWho}>{cm.author ?? 'unknown'}</span>
           </span>
+          <CopyMarkdown source={cm.body} html={renderMarkdown(cm.body)} label="copy" />
         </div>
       ))}
       {open ? (
@@ -610,10 +619,11 @@ export function CanonicalEditor({
         below it is rewritten.
       </p>
       {error ? <div className={styles.err}>{error}</div> : null}
-      <textarea
+      <MarkdownArea
         className={styles.textarea}
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        ariaLabel="Canonical answer"
+        onChange={setBody}
         placeholder="The direct answer, in two to five sentences."
         required
       />

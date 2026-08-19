@@ -3,6 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@bufferoverride/db": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./markdown": "./src/markdown.ts"
+  },
+  "dependencies": {
+    "@bufferoverride/db": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
 }

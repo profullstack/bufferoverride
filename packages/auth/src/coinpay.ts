@@ -8,6 +8,17 @@ const ISSUER = 'https://coinpayportal.com';
 export const COINPAY_STATE_COOKIE = 'bo_cp_state';
 
 /**
+ * The redirect URI registered on the CoinPay client, exactly.
+ *
+ * CoinPay compares this string, so it is not ours to choose freely — it is
+ * whatever the client registration says. The API serves the handler at this
+ * path and at the older /auth/coinpay/callback, because a redirect URI that
+ * has already been handed to an authorization server cannot be renamed
+ * unilaterally without breaking every sign-in mid-flight.
+ */
+export const COINPAY_REDIRECT_PATH = '/api/v1/coinpay/callback';
+
+/**
  * Least privilege at the point of use. Identity is all that signing in needs;
  * wallet:read is only worth asking for once there is a payout to address, and
  * CoinPay grants no payment scopes at all — see docs/architecture/auth.md.
@@ -37,7 +48,7 @@ export function beginAuthorization(
   // Built from the host actually being served, and carried in the state cookie
   // so the token exchange presents the identical value. Every host the app
   // answers on must therefore be a registered redirect URI on the CoinPay side.
-  const redirectUri = `${origin}/auth/coinpay/callback`;
+  const redirectUri = `${origin}${COINPAY_REDIRECT_PATH}`;
   if (!clientId) throw new Error('COINPAY_CLIENT_ID is not configured');
 
   const state = randomBytes(16).toString('base64url');

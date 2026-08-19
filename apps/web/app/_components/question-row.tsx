@@ -9,7 +9,7 @@ export function QuestionResult({ q }: { q: QuestionRow }) {
   return (
     <article className={`${styles.row} ${unanswered ? styles.rowOpen : ''}`}>
       <div className={styles.titleRow}>
-        <a className={styles.title} href={`/q/${q.id}/${q.slug}`}>
+        <a className={styles.title} href={`/q/${q.code}/${q.slug}`}>
           {q.title}
         </a>
         <span className={styles.id}>#{q.id}</span>

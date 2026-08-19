@@ -1,0 +1,133 @@
+/* Rendered markdown. Every rule here is scoped to .md so a body can never
+   restyle the page around it. */
+
+.md { font-size: 14.5px; line-height: 1.65; color: var(--text-body); min-width: 0; }
+
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+
+.md p { margin: 0 0 12px; }
+
+.md h1,
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  margin: 20px 0 8px;
+  line-height: 1.3;
+  font-weight: 660;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.md h1 { font-size: 20px; }
+.md h2 { font-size: 17.5px; }
+.md h3 { font-size: 15.5px; }
+.md h4,
+.md h5,
+.md h6 { font-size: 14.5px; }
+
+.md a { color: var(--link, var(--status-verified)); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.md a:hover { text-decoration-thickness: 2px; }
+
+.md strong { font-weight: 660; color: var(--text-primary); }
+.md del { opacity: 0.7; }
+
+/* Inline code sits inside a line, so it must not change the line's height. */
+.md code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.9em;
+  padding: 0.12em 0.36em;
+  border-radius: 4px;
+  background: var(--surface-sunken, rgba(127, 127, 127, 0.12));
+  overflow-wrap: anywhere;
+}
+
+/* A fenced block is the one place horizontal scrolling is correct: wrapping a
+   stack trace or a query destroys the shape that makes it readable. */
+.md pre {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.24));
+  border-radius: 8px;
+  background: var(--surface-sunken, rgba(127, 127, 127, 0.09));
+  overflow-x: auto;
+  position: relative;
+}
+
+.md pre code {
+  display: block;
+  padding: 0;
+  background: none;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+/* The language, when the author named one. Decorative, so it is not selectable
+   and never lands in a copied block. */
+.md pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  user-select: none;
+  pointer-events: none;
+}
+
+.md ul,
+.md ol { margin: 0 0 12px; padding-left: 22px; }
+.md li { margin: 3px 0; }
+.md li > ul,
+.md li > ol { margin: 3px 0; }
+
+.md li.task { list-style: none; margin-left: -18px; }
+.md li.task input { margin-right: 6px; vertical-align: middle; }
+
+.md blockquote {
+  margin: 0 0 12px;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--border-strong, rgba(127, 127, 127, 0.4));
+  color: var(--text-secondary);
+}
+
+.md hr { margin: 18px 0; border: 0; border-top: 1px solid var(--border, rgba(127, 127, 127, 0.24)); }
+
+/* An image is content, not layout: it may be any size and must never widen
+   the column it sits in. */
+.md img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.24));
+  display: block;
+  margin: 4px 0 14px;
+}
+
+.md table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 13.5px;
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.24));
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.md th { background: var(--surface-sunken, rgba(127, 127, 127, 0.09)); font-weight: 650; color: var(--text-primary); }
+
+/* The capsule renders the direct answer at a larger size than a reply. */
+.mdLead { font-size: 15.5px; color: var(--text-primary); }

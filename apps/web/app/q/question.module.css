@@ -120,3 +120,10 @@
 .logWarn { color: var(--status-stale); }
 
 .links { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 12px; }
+
+/* Pushes the copy control to the trailing edge of a content header. */
+.headSpacer { flex: 1 1 auto; }
+
+/* A labelled sub-block inside the capsule — known exceptions, and
+   anything else that is prose rather than a field. */
+.blockBody { font-size: 13.5px; color: var(--text-secondary); }

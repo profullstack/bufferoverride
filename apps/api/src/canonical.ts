@@ -192,7 +192,7 @@ canonical.post('/v1/questions/:id/canonical/challenge', async (c) => {
   );
 
   const contributors = await db().execute({
-    sql: `select distinct rev.actor_id, q.slug, q.title
+    sql: `select distinct rev.actor_id, q.code, q.slug, q.title
           from canonical_answer_revisions rev
           join questions q on q.id = rev.question_id
           where rev.question_id = ?`,
@@ -200,6 +200,7 @@ canonical.post('/v1/questions/:id/canonical/challenge', async (c) => {
   });
   for (const row of contributors.rows as unknown as {
     actor_id: string;
+    code: string;
     slug: string;
     title: string;
   }[]) {
@@ -208,7 +209,7 @@ canonical.post('/v1/questions/:id/canonical/challenge', async (c) => {
       type: 'canonical.challenged',
       title: `Canonical answer challenged: ${row.title}`,
       body: reason.slice(0, 200),
-      url: `/q/${questionId}/${row.slug}/canonical`,
+      url: `/q/${row.code}/${row.slug}/canonical`,
       fromActorId: actor.id,
     }).catch(() => {});
   }

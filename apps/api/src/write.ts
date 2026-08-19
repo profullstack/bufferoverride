@@ -3,25 +3,36 @@ import { db } from '@bufferoverride/db';
 import {
   SESSION_COOKIE,
   actorFromSessionToken,
-  areIndependent,
   principalFromAuthHeader,
   readCookie,
   type Actor,
   type Scope,
 } from '@bufferoverride/auth';
+import { checkRate, findDuplicates, scanSecrets, validateComment } from '@bufferoverride/core';
+import { notify } from '@bufferoverride/notifications';
 import {
-  checkRate,
-  findDuplicates,
-  normalizeTag,
-  scanSecrets,
-  slugify,
-  validateAnswer,
-  validateComment,
-  validateQuestion,
-} from '@bufferoverride/core';
-import { notify, watch, watchersOf } from '@bufferoverride/notifications';
+  PublishError,
+  publishAnswer,
+  publishQuestion,
+  recordVerification,
+  type Refusal,
+} from './publish.ts';
 
 export const write = new Hono();
+
+/** Map a refusal from the shared write path onto the HTTP shape REST uses. */
+function refusalResponse(refusal: Refusal): [Record<string, unknown>, 400 | 404 | 409 | 429] {
+  switch (refusal.kind) {
+    case 'invalid':
+      return [{ error: 'invalid', errors: refusal.errors }, 400];
+    case 'not_found':
+      return [{ error: 'not_found' }, 404];
+    case 'rate_limited':
+      return [{ error: 'rate_limited', retryAfterMinutes: refusal.retryAfterMinutes }, 429];
+    case 'secrets':
+      return [{ error: 'secrets_detected', findings: refusal.findings }, 409];
+  }
+}
 
 type Principal = { actor: Actor; viaKey: boolean };
 
@@ -83,10 +94,6 @@ write.post('/v1/questions', async (c) => {
   const principal = await principalFor(c, 'write:questions');
   if (!principal || principal === 'forbidden')
     return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
-  const { actor } = principal;
-
-  const rate = await checkRate(actor.id, 'question.create');
-  if (!rate.allowed) return c.json({ error: 'rate_limited', retryAfterMinutes: 60 }, 429);
 
   const body = await c.req.json<{
     title?: string;
@@ -96,60 +103,25 @@ write.post('/v1/questions', async (c) => {
     acknowledgeSecrets?: boolean;
   }>();
 
-  const title = (body.title ?? '').trim();
-  const text = (body.body ?? '').trim();
-  const tags = [...new Set((body.tags ?? []).map(normalizeTag).filter((t): t is string => !!t))].slice(0, 5);
-
-  const errors = validateQuestion({ title, body: text, tags });
-  if (errors.length) return c.json({ error: 'invalid', errors }, 400);
-
-  // The author must see what was found and say so explicitly; nothing is
-  // silently redacted on their behalf.
-  const findings = scanSecrets(`${title}\n${text}`);
-  if (findings.length && !body.acknowledgeSecrets) {
-    return c.json({ error: 'secrets_detected', findings }, 409);
-  }
-
-  const attribution = ['human', 'agent', 'human-assisted-agent', 'agent-assisted-human', 'organization']
-    .includes(body.attribution ?? '')
-    ? body.attribution
-    : 'human';
-
-  // Two write transactions, which is the documented budget: the insert has to
-  // return the id before the rows that reference it can be written.
-  const inserted = await db().execute({
-    sql: `insert into questions (slug, title, body, author_id, attribution)
-          values (?, ?, ?, ?, ?) returning id`,
-    args: [slugify(title), title, text, actor.id, attribution as string],
-  });
-  const id = Number((inserted.rows[0] as unknown as { id: number }).id);
-
-  const statements: { sql: string; args: unknown[] }[] = [
-    {
-      sql: `insert into revisions (content_type, content_id, actor_id, body, comment)
-            values ('question', ?, ?, ?, 'created')`,
-      args: [id, actor.id, text],
-    },
-  ];
-  for (const tag of tags) {
-    statements.push({ sql: 'insert or ignore into tags (slug, name) values (?, ?)', args: [tag, tag] });
-    statements.push({
-      sql: `insert or ignore into question_tags (question_id, tag_id)
-            select ?, id from tags where slug = ?`,
-      args: [id, tag],
+  try {
+    const created = await publishQuestion({
+      actorId: principal.actor.id,
+      title: body.title ?? '',
+      body: body.body ?? '',
+      tags: body.tags,
+      // A key belongs to an agent or to a terminal acting for a human; either
+      // way the caller says what wrote the text, and 'human' is only the
+      // default for a browser session.
+      attribution: body.attribution,
+      acknowledgeSecrets: body.acknowledgeSecrets,
+      via: principal.viaKey ? 'key' : 'web',
     });
+    return c.json({ data: created }, 201);
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
   }
-  statements.push({
-    sql: `insert into audit_events (actor_id, action, target_type, target_id)
-          values (?, 'question.create', 'question', ?)`,
-    args: [actor.id, String(id)],
-  });
-  await db().batch(statements as never, 'write');
-  // Asking opts you into the thread; nobody has to find a "watch" button to
-  // hear that their own question was answered.
-  await watch(actor.id, id).catch(() => {});
-
-  return c.json({ data: { id, slug: slugify(title), url: `/q/${id}/${slugify(title)}` } }, 201);
 });
 
 // ── answer ────────────────────────────────────────────────────────────────
@@ -158,14 +130,6 @@ write.post('/v1/questions/:id/answers', async (c) => {
   const principal = await principalFor(c, 'write:answers');
   if (!principal || principal === 'forbidden')
     return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
-  const { actor } = principal;
-
-  const questionId = Number(c.req.param('id'));
-  const exists = await db().execute({ sql: 'select id from questions where id = ?', args: [questionId] });
-  if (!exists.rows.length) return c.json({ error: 'not_found' }, 404);
-
-  const rate = await checkRate(actor.id, 'answer.create');
-  if (!rate.allowed) return c.json({ error: 'rate_limited', retryAfterMinutes: 60 }, 429);
 
   const body = await c.req.json<{
     body?: string;
@@ -174,80 +138,27 @@ write.post('/v1/questions/:id/answers', async (c) => {
     attribution?: string;
     acknowledgeSecrets?: boolean;
   }>();
-  const text = (body.body ?? '').trim();
 
-  const errors = validateAnswer(text);
-  if (errors.length) return c.json({ error: 'invalid', errors }, 400);
-
-  const findings = scanSecrets(text);
-  if (findings.length && !body.acknowledgeSecrets) {
-    return c.json({ error: 'secrets_detected', findings }, 409);
+  try {
+    const created = await publishAnswer({
+      actorId: principal.actor.id,
+      question: c.req.param('id'),
+      body: body.body ?? '',
+      validFrom: body.validFrom,
+      validThrough: body.validThrough,
+      attribution: body.attribution,
+      acknowledgeSecrets: body.acknowledgeSecrets,
+      via: principal.viaKey ? 'key' : 'web',
+    });
+    return c.json(
+      { data: { id: created.id, anchor: `#answer-${created.id}`, url: created.url } },
+      201,
+    );
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
   }
-
-  const attribution = ['human', 'agent', 'human-assisted-agent', 'agent-assisted-human', 'organization']
-    .includes(body.attribution ?? '')
-    ? body.attribution
-    : 'human';
-
-  const inserted = await db().execute({
-    sql: `insert into answers (question_id, author_id, attribution, body, valid_from, valid_through)
-          values (?, ?, ?, ?, ?, ?) returning id`,
-    args: [
-      questionId,
-      actor.id,
-      attribution as string,
-      text,
-      body.validFrom?.trim() || null,
-      body.validThrough?.trim() || null,
-    ],
-  });
-  const id = Number((inserted.rows[0] as unknown as { id: number }).id);
-
-  await db().batch(
-    [
-      {
-        sql: `insert into revisions (content_type, content_id, actor_id, body, comment)
-              values ('answer', ?, ?, ?, 'created')`,
-        args: [id, actor.id, text],
-      },
-      {
-        sql: `update questions
-              set answer_count = (select count(*) from answers where question_id = ?),
-                  updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-              where id = ?`,
-        args: [questionId, questionId],
-      },
-      {
-        sql: `insert into audit_events (actor_id, action, target_type, target_id)
-              values (?, 'answer.create', 'answer', ?)`,
-        args: [actor.id, String(id)],
-      },
-    ] as never,
-    'write',
-  );
-
-  // Notifications are queued after the write, never inside it: a slow mail
-  // provider must not hold a write transaction open.
-  const q = await db().execute({
-    sql: 'select slug, title from questions where id = ?',
-    args: [questionId],
-  });
-  const question = q.rows[0] as unknown as { slug: string; title: string };
-  const url = `/q/${questionId}/${question.slug}#answer-${id}`;
-
-  for (const watcherId of await watchersOf(questionId, actor.id)) {
-    await notify({
-      actorId: watcherId,
-      type: 'answer.new',
-      title: `New answer: ${question.title}`,
-      body: text.slice(0, 200),
-      url,
-      fromActorId: actor.id,
-    }).catch(() => {});
-  }
-  await watch(actor.id, questionId).catch(() => {});
-
-  return c.json({ data: { id, anchor: `#answer-${id}` } }, 201);
 });
 
 // ── verify ────────────────────────────────────────────────────────────────
@@ -256,80 +167,25 @@ write.post('/v1/answers/:id/verify', async (c) => {
   const principal = await principalFor(c, 'write:verifications');
   if (!principal || principal === 'forbidden')
     return c.json(deny(principal), principal === 'forbidden' ? 403 : 401);
-  const { actor } = principal;
-
-  const answerId = Number(c.req.param('id'));
-  const answer = await db().execute({
-    sql: 'select id, author_id from answers where id = ?',
-    args: [answerId],
-  });
-  if (!answer.rows.length) return c.json({ error: 'not_found' }, 404);
-  const authorId = (answer.rows[0] as unknown as { author_id: string }).author_id;
-
-  const rate = await checkRate(actor.id, 'verification.create');
-  if (!rate.allowed) return c.json({ error: 'rate_limited', retryAfterMinutes: 60 }, 429);
 
   const body = await c.req.json<{ result?: string; environment?: string; method?: string; notes?: string }>();
-  const result = ['pass', 'fail', 'partial'].includes(body.result ?? '') ? body.result! : null;
-  if (!result) return c.json({ error: 'invalid', errors: [{ field: 'result', message: 'pass, fail or partial.' }] }, 400);
 
-  const environment = (body.environment ?? '').trim();
-  if (environment.length < 3) {
-    return c.json(
-      { error: 'invalid', errors: [{ field: 'environment', message: 'Say what you ran it on — a verification without an environment proves nothing.' }] },
-      400,
-    );
-  }
-
-  // Independence is computed, never claimed — and it is not just "a different
-  // account": two agents under one owner, or an owner and their own agent,
-  // cannot vouch for each other. The run is still recorded and shown; it just
-  // does not count.
-  const independent = (await areIndependent(actor.id, authorId)) ? 1 : 0;
-
-  await db().batch(
-    [
-      {
-        sql: `insert into verifications (answer_id, actor_id, result, method, environment, output_summary, is_independent)
-              values (?, ?, ?, ?, ?, ?, ?)`,
-        args: [answerId, actor.id, result, body.method ?? 'manual', environment, (body.notes ?? '').slice(0, 2000) || null, independent],
-      },
-      {
-        sql: `update answers set verified_count = (
-                select count(*) from verifications
-                where answer_id = ? and result = 'pass' and is_independent = 1
-              ) where id = ?`,
-        args: [answerId, answerId],
-      },
-      {
-        sql: `insert into audit_events (actor_id, action, target_type, target_id)
-              values (?, 'verification.create', 'answer', ?)`,
-        args: [actor.id, String(answerId)],
-      },
-    ] as never,
-    'write',
-  );
-
-  if (independent === 1 && result === 'pass') {
-    const ctx = await db().execute({
-      sql: `select q.id as qid, q.slug, q.title from answers ans
-            join questions q on q.id = ans.question_id where ans.id = ?`,
-      args: [answerId],
+  try {
+    const recorded = await recordVerification({
+      actorId: principal.actor.id,
+      answerId: Number(c.req.param('id')),
+      result: body.result ?? '',
+      environment: body.environment ?? '',
+      method: body.method,
+      notes: body.notes,
+      via: principal.viaKey ? 'key' : 'web',
     });
-    const row = ctx.rows[0] as unknown as { qid: number; slug: string; title: string } | undefined;
-    if (row) {
-      await notify({
-        actorId: authorId,
-        type: 'answer.verified',
-        title: `Your answer was reproduced: ${row.title}`,
-        body: `Independently reproduced on ${environment}.`,
-        url: `/q/${row.qid}/${row.slug}#answer-${answerId}`,
-        fromActorId: actor.id,
-      }).catch(() => {});
-    }
+    return c.json({ data: recorded }, 201);
+  } catch (err) {
+    if (!(err instanceof PublishError)) throw err;
+    const [payload, status] = refusalResponse(err.refusal);
+    return c.json(payload, status);
   }
-
-  return c.json({ data: { answerId, result, independent: independent === 1 } }, 201);
 });
 
 // ── accept ────────────────────────────────────────────────────────────────
@@ -366,19 +222,19 @@ write.post('/v1/answers/:id/accept', async (c) => {
     'write',
   );
   const ctx = await db().execute({
-    sql: `select ans.author_id, q.id as qid, q.slug, q.title from answers ans
+    sql: `select ans.author_id, q.code, q.slug, q.title from answers ans
           join questions q on q.id = ans.question_id where ans.id = ?`,
     args: [answerId],
   });
   const accepted = ctx.rows[0] as unknown as
-    | { author_id: string; qid: number; slug: string; title: string }
+    | { author_id: string; code: string; slug: string; title: string }
     | undefined;
   if (accepted) {
     await notify({
       actorId: accepted.author_id,
       type: 'answer.accepted',
       title: `Your answer was accepted: ${accepted.title}`,
-      url: `/q/${accepted.qid}/${accepted.slug}#answer-${answerId}`,
+      url: `/q/${accepted.code}/${accepted.slug}#answer-${answerId}`,
       fromActorId: actor.id,
     }).catch(() => {});
   }
@@ -480,16 +336,16 @@ write.post('/v1/comments', async (c) => {
   const target =
     contentType === 'answer'
       ? await db().execute({
-          sql: `select ans.author_id, q.id as qid, q.slug, q.title from answers ans
+          sql: `select ans.author_id, q.code, q.slug, q.title from answers ans
                 join questions q on q.id = ans.question_id where ans.id = ?`,
           args: [contentId],
         })
       : await db().execute({
-          sql: 'select author_id, id as qid, slug, title from questions where id = ?',
+          sql: 'select author_id, code, slug, title from questions where id = ?',
           args: [contentId],
         });
   const row = target.rows[0] as unknown as
-    | { author_id: string; qid: number; slug: string; title: string }
+    | { author_id: string; code: string; slug: string; title: string }
     | undefined;
   if (row) {
     await notify({
@@ -497,7 +353,7 @@ write.post('/v1/comments', async (c) => {
       type: 'comment.new',
       title: `New comment on: ${row.title}`,
       body: text.slice(0, 200),
-      url: `/q/${row.qid}/${row.slug}`,
+      url: `/q/${row.code}/${row.slug}`,
       fromActorId: actor.id,
     }).catch(() => {});
   }

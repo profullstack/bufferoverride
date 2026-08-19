@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Badge, VersionPill } from '@bufferoverride/ui';
+import { MarkdownArea } from '../_components/markdown-area.tsx';
 import styles from './ask.module.css';
 
-type Dupe = { id: number; slug: string; title: string; answer_count: number; verified_count: number | null };
+type Dupe = { id: number; code: string; slug: string; title: string; answer_count: number; verified_count: number | null };
 type Finding = { kind: string; line: number; preview: string };
 type Invalid = { field: string; message: string };
 
@@ -138,7 +139,7 @@ export function AskForm() {
           </span>
           {dupes.map((d) => (
             <div key={d.id} className={styles.dupeRow}>
-              <a href={`/q/${d.id}/${d.slug}`} target="_blank" rel="noreferrer">
+              <a href={`/q/${d.code}/${d.slug}`} target="_blank" rel="noreferrer">
                 {d.title}
               </a>
               <span className={styles.dupeMeta}>
@@ -151,17 +152,17 @@ export function AskForm() {
       ) : null}
 
       <div className={styles.field}>
-        <label className={styles.label} htmlFor="body">
+        <span className={styles.label}>
           What happened
-        </label>
+        </span>
         <span className={styles.hint}>
           Command, expected result, actual result, and the environment. Paste the output verbatim.
         </span>
-        <textarea
-          id="body"
+        <MarkdownArea
           className={styles.textarea}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          ariaLabel="What happened"
+          onChange={setBody}
           placeholder={'$ bun test worker.spec.ts\nworker exited before finishing (code 0)\n\nExpected the worker to run to completion.\nbun 1.3.14 / ubuntu 24.04 / @libsql/client 0.15.15'}
           required
         />

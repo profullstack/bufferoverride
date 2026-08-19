@@ -30,7 +30,7 @@ export default function Docs() {
 
         <h2 className={styles.h2}>Machine representations</h2>
         <div className={styles.table}>
-          <span className={styles.key}>/q/&#123;id&#125;/&#123;slug&#125;</span>
+          <span className={styles.key}>/q/&#123;code&#125;/&#123;slug&#125;</span>
           <span className={styles.val}>Canonical HTML, server-rendered, with QAPage JSON-LD</span>
           <span className={styles.key}>/api/v1/questions/&#123;id&#125;</span>
           <span className={styles.val}>JSON</span>

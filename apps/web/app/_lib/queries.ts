@@ -1,8 +1,10 @@
 import { db } from '@bufferoverride/db';
-import { ftsAttempts } from '@bufferoverride/core';
+import { ftsAttempts, parseReference } from '@bufferoverride/core';
 
 export type QuestionRow = {
   id: number;
+  /** The public identifier. `id` is internal and must not reach a URL. */
+  code: string;
   slug: string;
   title: string;
   body: string;
@@ -23,7 +25,7 @@ export type QuestionRow = {
  */
 export async function listQuestions(limit = 25): Promise<QuestionRow[]> {
   const result = await db().execute({
-    sql: `select q.id, q.slug, q.title, q.body, q.answer_count, q.created_at,
+    sql: `select q.id, q.code, q.slug, q.title, q.body, q.answer_count, q.created_at,
                  q.attribution, a.username as author, a.kind as author_kind,
                  (select max(verified_count) from answers where question_id = q.id) as verified_count,
                  (select max(is_accepted) from answers where question_id = q.id) as is_canonical
@@ -45,7 +47,7 @@ export async function searchQuestions(q: string, limit = 25): Promise<QuestionRo
   try {
     for (const match of attempts) {
       const result = await db().execute({
-        sql: `select q.id, q.slug, q.title, q.body, q.answer_count, q.created_at,
+        sql: `select q.id, q.code, q.slug, q.title, q.body, q.answer_count, q.created_at,
                    q.attribution, a.username as author, a.kind as author_kind,
                    (select max(verified_count) from answers where question_id = q.id) as verified_count,
                    (select max(is_accepted) from answers where question_id = q.id) as is_canonical
@@ -83,14 +85,23 @@ export type AnswerRow = {
   created_at: string;
 };
 
-export async function getQuestion(id: number, viewerId?: string) {
+/**
+ * One question, by its public code — or by the numeric id it used to be
+ * addressed by, so that URLs already indexed keep resolving. The caller is
+ * expected to redirect a legacy hit to the code form.
+ */
+export async function getQuestion(reference: string | number, viewerId?: string) {
+  const parsed = parseReference(String(reference));
+  if (!parsed) return null;
+
   const question = await db().execute({
     sql: `select q.*, a.username as author, a.kind as author_kind
           from questions q left join actors a on a.id = q.author_id
-          where q.id = ? and q.is_hidden = 0`,
-    args: [id],
+          where ${parsed.kind === 'code' ? 'q.code = ?' : 'q.id = ?'} and q.is_hidden = 0`,
+    args: [parsed.kind === 'code' ? parsed.code : parsed.id],
   });
   if (!question.rows.length) return null;
+  const id = Number((question.rows[0] as unknown as { id: number }).id);
 
   const answers = await db().execute({
     sql: `select ans.id, ans.body, ans.attribution, ans.is_accepted, ans.verified_count,
@@ -176,7 +187,7 @@ export async function getQuestion(id: number, viewerId?: string) {
       author: string | null;
     }[],
     votes: myVotes.rows as unknown as { content_type: string; content_id: number; value: number }[],
-    question: question.rows[0] as unknown as QuestionRow & { body: string },
+    question: question.rows[0] as unknown as QuestionRow & { body: string; updated_at: string | null },
     answers: answers.rows as unknown as AnswerRow[],
     verifications: verifications.rows as unknown as {
       result: string;

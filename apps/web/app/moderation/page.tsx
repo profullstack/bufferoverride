@@ -38,6 +38,12 @@ export default async function Moderation() {
   const flags = await db().execute(`
     select f.id, f.content_type, f.content_id, f.reason, f.detail, a.username as reporter,
            case f.content_type
+             when 'question' then (select code from questions where id = f.content_id)
+             when 'answer'   then (select q.code from answers ans
+                                     join questions q on q.id = ans.question_id
+                                    where ans.id = f.content_id)
+           end as content_code,
+           case f.content_type
              when 'question' then (select title from questions where id = f.content_id)
              when 'answer'   then (select substr(body, 1, 180) from answers where id = f.content_id)
              else                 (select substr(body, 1, 180) from comments where id = f.content_id)
