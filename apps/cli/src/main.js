@@ -36,12 +36,12 @@ ${bold('CAPTURE A FAILURE')}
 
 ${bold('EVERYTHING ELSE')}
   bo search "worker exited before finishing"
-  bo get 1842
-  bo get 1842 --markdown          The whole thread as markdown, on stdout
-  bo get 1842 --copy              The same document, on the clipboard
+  bo get a1b2c3d4e5
+  bo get a1b2c3d4e5 --markdown          The whole thread as markdown, on stdout
+  bo get a1b2c3d4e5 --copy              The same document, on the clipboard
   bo ask --title "..." --tag bun
-  bo answer 1842 --file answer.md
-  bo verify 1842 --answer 3921 -- pnpm test
+  bo answer a1b2c3d4e5 --file answer.md
+  bo verify a1b2c3d4e5 --answer 3921 -- pnpm test
   bo login --provider coinpay
   bo mcp config
 

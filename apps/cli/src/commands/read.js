@@ -1,4 +1,4 @@
-import { Api, ApiError } from '../api.js';
+import { Api, ApiError, questionRef } from '../api.js';
 import { resolveSettings } from '../config.js';
 import { bold, dim, fail, green, indent, json, note, out, questionLine, truncate, yellow } from '../render.js';
 import { copyToClipboard, questionToMarkdown, renderTerminal } from '../markdown.js';
@@ -70,7 +70,7 @@ export async function get(ctx) {
     return 0;
   }
 
-  const pageUrl = `${settings.url}/q/${question.code ?? question.id}/${question.slug}`;
+  const pageUrl = `${settings.url}/q/${questionRef(question)}/${question.slug}`;
 
   // The whole thread as markdown: printed for a pipe, or put on the clipboard.
   if (ctx.flags.markdown || ctx.flags.copy) {
@@ -89,7 +89,7 @@ export async function get(ctx) {
   }
 
   out('');
-  out(bold(`#${question.id} ${question.title}`));
+  out(bold(`#${questionRef(question)} ${question.title}`));
   out(dim(`asked by ${question.author} · ${String(question.created_at).slice(0, 10)} · ${question.attribution}`));
   out('');
   out(renderTerminal(question.body));
@@ -98,7 +98,7 @@ export async function get(ctx) {
   const answers = question.answers ?? [];
   if (!answers.length) {
     out(yellow('No answers yet.'));
-    out(dim(`bo answer ${question.id} --file answer.md`));
+    out(dim(`bo answer ${questionRef(question)} --file answer.md`));
   }
 
   for (const answer of answers) {

@@ -1,4 +1,5 @@
 import { createInterface } from 'node:readline/promises';
+import { questionRef } from './api.js';
 
 /**
  * Terminal output.
@@ -74,7 +75,7 @@ export function questionLine(hit) {
   if (hit.valid_from || hit.valid_through) {
     facts.push([hit.valid_from, hit.valid_through].filter(Boolean).join(' - '));
   }
-  return `${bold(`#${hit.id}`)} ${truncate(hit.title, 88)}\n${indent(dim(facts.join(' · ')))}`;
+  return `${bold(`#${questionRef(hit)}`)} ${truncate(hit.title, 88)}\n${indent(dim(facts.join(' · ')))}`;
 }
 
 /** Ask a question on the terminal. Non-interactive callers must not reach here. */

@@ -1,4 +1,4 @@
-import { Api, ApiError } from '../api.js';
+import { Api, ApiError, questionRef } from '../api.js';
 import { resolveSettings } from '../config.js';
 import {
   captureToMarkdown,
@@ -131,7 +131,8 @@ export async function run(ctx) {
     if (choice.startsWith('o')) {
       const which = matches.length === 1 ? matches[0] : null;
       const id =
-        which?.id ?? (await prompt(`  which id? ${dim(matches.map((m) => m.id).join(' '))} `));
+        questionRef(which) ??
+        (await prompt(`  which one? ${dim(matches.map((m) => questionRef(m)).join(' '))} `));
       if (id) {
         const { get } = await import('./read.js');
         return get({ ...ctx, positional: [String(id)], flags: { ...flags } });
