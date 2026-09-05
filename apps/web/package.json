@@ -10,17 +10,18 @@
     "test": "node --test test/*.test.ts"
   },
   "dependencies": {
+    "@bufferoverride/auth": "workspace:*",
+    "@bufferoverride/core": "workspace:*",
     "@bufferoverride/db": "workspace:*",
+    "@bufferoverride/design-tokens": "workspace:*",
+    "@bufferoverride/notifications": "workspace:*",
+    "@bufferoverride/reputation": "workspace:*",
+    "@bufferoverride/ui": "workspace:*",
+    "@profullstack/x402-gateway": "^0.1.0",
+    "@simplewebauthn/browser": "^13.2.2",
     "next": "^16.0.10",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "@bufferoverride/ui": "workspace:*",
-    "@bufferoverride/design-tokens": "workspace:*",
-    "@bufferoverride/auth": "workspace:*",
-    "@simplewebauthn/browser": "^13.2.2",
-    "@bufferoverride/core": "workspace:*",
-    "@bufferoverride/reputation": "workspace:*",
-    "@bufferoverride/notifications": "workspace:*"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/react": "19.2.18",
