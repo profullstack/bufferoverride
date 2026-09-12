@@ -1,0 +1,29 @@
+{
+  "openaccess": "0.1",
+  "name": "BufferOverride",
+  "url": "https://bufferoverride.com",
+  "operator": "https://logicsrc.com/.well-known/openprofile.md",
+  "redirect_uris": [
+    "https://bufferoverride.com/api/v1/openaccess/callback"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "kid": "I8vfTNedZIZj",
+        "x": "fbx823o3EqQi_FmEPrID66FKSUzNC5_s5k4_q1N0Mf4",
+        "alg": "EdDSA",
+        "use": "sig"
+      }
+    ]
+  },
+  "scopes": {},
+  "honours": [
+    "profullstack.com/all-access"
+  ],
+  "webhooks": "https://bufferoverride.com/api/v1/openaccess/events",
+  "hubs": [
+    "https://openaccess.logicsrc.com"
+  ]
+}
