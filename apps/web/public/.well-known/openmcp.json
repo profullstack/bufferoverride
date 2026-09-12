@@ -1,0 +1,26 @@
+{
+  "openmcp": "0.1",
+  "mcp": "https://bufferoverride.com/mcp",
+  "name": "BufferOverride",
+  "description": "Content and micro-payments: read, tip, publish.",
+  "url": "https://bufferoverride.com",
+  "auth": {
+    "kind": "bearer",
+    "url": "https://bufferoverride.com/settings"
+  },
+  "tags": [
+    "content",
+    "payments"
+  ],
+  "operator": "https://logicsrc.com/.well-known/openprofile.md",
+  "tools": [
+    "search_questions",
+    "get_question",
+    "list_questions",
+    "list_tags",
+    "whoami"
+  ],
+  "catalogs": [
+    "https://openmcp.logicsrc.com"
+  ]
+}
