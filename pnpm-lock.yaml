@@ -70,8 +70,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@profullstack/x402-gateway':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.7.0
+        version: 0.7.0
       '@simplewebauthn/browser':
         specifier: ^13.2.2
         version: 13.3.0
@@ -486,8 +486,12 @@ packages:
     resolution: {integrity: sha512-C2Xj8FZ0uHWeCXXqX5B4/gVFQmtSkiuOolzAgutjTfseNOHT3pUjljDZsTSxXFGgio54bCzVFqmEOUrIVk8RDA==}
     engines: {node: '>=20.0.0'}
 
-  '@profullstack/x402-gateway@0.1.0':
-    resolution: {integrity: sha512-B7tWvWk/bIEoqyec6UoyRF1pO7X/+b+wFRv2ZFIClqskmEpyxoA559ZgdTvnxqAIvuDeE9v56nVpYRQ+lmOZQQ==}
+  '@profullstack/keys@0.1.0':
+    resolution: {integrity: sha512-Vys47LvS5ivhdZu4SYOxh9Le3DEmWhjP0+CtrU45RhXAbY0ZFG/2Dk9V1bIIUGDp8UWMJqctvUD21JrNjfh04w==}
+    engines: {node: '>=20.11'}
+
+  '@profullstack/x402-gateway@0.7.0':
+    resolution: {integrity: sha512-xsZRWHdOD9Y9EuRS4PsRmykVS2geOu/luY0jBlliOF3SEgxiLhgmx7ks+2jOUtGlq+cIfSonnk5eEObRGCOJ9w==}
     engines: {node: '>=20.11'}
 
   '@simplewebauthn/browser@13.3.0':
@@ -1123,7 +1127,11 @@ snapshots:
       tslib: 2.8.1
       tsyringe: 4.10.0
 
-  '@profullstack/x402-gateway@0.1.0': {}
+  '@profullstack/keys@0.1.0': {}
+
+  '@profullstack/x402-gateway@0.7.0':
+    dependencies:
+      '@profullstack/keys': 0.1.0
 
   '@simplewebauthn/browser@13.3.0': {}
 
