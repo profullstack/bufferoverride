@@ -54,7 +54,9 @@ const OVERALL_SQL = `
   from actors a`;
 
 /** Per-tag standing, attributed through the question an answer belongs to. */
-const TAG_SQL = `
+// Filtered through an outer query: Postgres does not let HAVING name a
+// select-list alias (SQLite does), and both accept the wrapper.
+const TAG_SQL = `select * from (
   select ans.author_id as actor_id, qt.tag_id, cast(
       count(distinct case when ans.is_accepted = 1 then ans.id end) * ${WEIGHTS.accepted}
     + count(distinct case when ver.is_independent = 1 and ver.result = 'pass' then ver.id end)
@@ -66,7 +68,7 @@ const TAG_SQL = `
   left join verifications ver on ver.answer_id = ans.id
   where ${visible('ans')}
   group by ans.author_id, qt.tag_id
-  having reputation <> 0`;
+) t where reputation <> 0`;
 
 /**
  * Recompute everything in two write transactions.
