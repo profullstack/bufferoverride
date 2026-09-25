@@ -4,5 +4,6 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@libsql/client": "^0.15.15" }
+  "dependencies": { "@profullstack/libsql-pg": "^0.1.3" },
+  "devDependencies": { "@libsql/client": "^0.15.15" }
 }

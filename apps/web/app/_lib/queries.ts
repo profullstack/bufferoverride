@@ -1,5 +1,5 @@
 import { db, visible, visibleComment } from '@bufferoverride/db';
-import { ftsAttempts, parseReference } from '@bufferoverride/core';
+import { parseReference, searchAttempts } from '@bufferoverride/core';
 
 export type QuestionRow = {
   id: number;
@@ -41,23 +41,22 @@ export async function listQuestions(limit = 25): Promise<QuestionRow[]> {
 
 /** bm25(), never rank: identical ordering, far better plan once filters join. */
 export async function searchQuestions(q: string, limit = 25): Promise<QuestionRow[]> {
-  const attempts = ftsAttempts(q);
+  const attempts = searchAttempts(db(), q);
   if (attempts.length === 0) return [];
 
   try {
-    for (const match of attempts) {
+    for (const attempt of attempts) {
       const result = await db().execute({
         sql: `select q.id, q.code, q.slug, q.title, q.body, q.answer_count, q.created_at,
                    q.attribution, a.username as author, a.kind as author_kind,
                    (select max(verified_count) from answers where question_id = q.id) as verified_count,
                    (select max(is_accepted) from answers where question_id = q.id) as is_canonical
-            from questions_fts f
-            join questions q on q.id = f.rowid
+            from ${attempt.from}
             left join actors a on a.id = q.author_id
-            where questions_fts match ? and ${visible('q')}
-            order by bm25(questions_fts)
+            where ${attempt.where} and ${visible('q')}
+            order by ${attempt.orderBy}
             limit ?`,
-        args: [match, limit],
+        args: [...attempt.args, limit],
       });
       if (result.rows.length) return result.rows as unknown as QuestionRow[];
     }

@@ -28,10 +28,13 @@ export async function requestMagicLink(
   const normalized = email.trim().toLowerCase();
   if (!isEmail(normalized)) return;
 
+  // created_at is ISO-8601 text on both databases; compare it with a string
+  // computed here rather than datetime('now', ...), which Postgres would type
+  // as a timestamp and refuse to compare with text.
   const recent = await db().execute({
     sql: `select count(*) as n from magic_links
-          where email = ? and created_at > datetime('now', '-1 hour')`,
-    args: [normalized],
+          where email = ? and created_at > ?`,
+    args: [normalized, new Date(Date.now() - 60 * 60 * 1000).toISOString()],
   });
   if ((recent.rows[0] as unknown as { n: number }).n >= MAX_PER_HOUR) {
     console.warn(`[auth] magic link rate limit hit for ${normalized}`);

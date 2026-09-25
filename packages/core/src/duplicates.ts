@@ -1,5 +1,5 @@
 import { db } from '@bufferoverride/db';
-import { toFtsQuery } from './fts.ts';
+import { searchAttempts } from './fts.ts';
 
 export type DuplicateHit = {
   id: number;
@@ -23,19 +23,18 @@ export type DuplicateHit = {
  */
 export async function findDuplicates(draftTitle: string, limit = 5): Promise<DuplicateHit[]> {
   // OR here on purpose: suggestions want recall, not precision.
-  const query = toFtsQuery(draftTitle, 'or');
-  if (!query) return [];
+  const [attempt] = searchAttempts(db(), draftTitle, 'or');
+  if (!attempt) return [];
 
   try {
     const r = await db().execute({
       sql: `select q.id, q.code, q.slug, q.title, q.answer_count,
                    (select max(verified_count) from answers where question_id = q.id) as verified_count
-            from questions_fts f
-            join questions q on q.id = f.rowid
-            where questions_fts match ?
-            order by bm25(questions_fts)
+            from ${attempt.from}
+            where ${attempt.where}
+            order by ${attempt.orderBy}
             limit ?`,
-      args: [query, limit],
+      args: [...attempt.args, limit],
     });
     return r.rows as unknown as DuplicateHit[];
   } catch (err) {

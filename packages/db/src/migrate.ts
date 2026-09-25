@@ -1,9 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { db } from './client.ts';
+import { databaseUrl, db, isPostgres, openClient } from './client.ts';
 
-const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
+const PACKAGE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Forward-only migration runner, keyed by filename.
@@ -11,11 +11,34 @@ const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'migr
  * Each file is applied inside a single write transaction together with its
  * bookkeeping row, so a migration and the record that it ran can never
  * disagree. There is no down-migration: roll forward with a new file.
+ *
+ * Two editions of every migration exist: `migrations/` (SQLite, for local
+ * `file:` databases and the tests) and `migrations-pg/` (Postgres, generated
+ * from the former with `npx libsql-pg convert-schema` and reviewed). The same
+ * filenames mark the same steps, so a `schema_migrations` table copied from
+ * the old database is already complete. Postgres DDL is sent as-is through a
+ * second client (`dialect: 'postgres'`): the statement rewriter only knows
+ * SQLite's dialect and must not touch DDL that is not.
  */
 export async function migrate(): Promise<string[]> {
-  const client = db();
+  const postgres = isPostgres(db());
+  const client = postgres ? openClient(databaseUrl(), { dialect: 'postgres' }) : db();
+  try {
+    return await run(client, join(PACKAGE_DIR, postgres ? 'migrations-pg' : 'migrations'), postgres);
+  } finally {
+    if (postgres) client.close();
+  }
+}
 
-  await client.execute(`
+async function run(client: ReturnType<typeof db>, migrationsDir: string, postgres: boolean): Promise<string[]> {
+  await client.execute(postgres
+    ? `
+    create table if not exists schema_migrations (
+      filename    text primary key,
+      applied_at  text not null default (to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+    )
+  `
+    : `
     create table if not exists schema_migrations (
       filename    text primary key,
       applied_at  text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
@@ -28,13 +51,13 @@ export async function migrate(): Promise<string[]> {
     ),
   );
 
-  const files = (await readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith('.sql')).sort();
+  const files = (await readdir(migrationsDir)).filter((f) => f.endsWith('.sql')).sort();
   const ran: string[] = [];
 
   for (const file of files) {
     if (applied.has(file)) continue;
 
-    const sql = await readFile(join(MIGRATIONS_DIR, file), 'utf8');
+    const sql = await readFile(join(migrationsDir, file), 'utf8');
     const statements = splitStatements(sql);
 
     // One write transaction for the whole migration plus its bookkeeping row.

@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { db, env, visible } from '@bufferoverride/db';
-import { ftsAttempts, parseReference } from '@bufferoverride/core';
+import { parseReference, searchAttempts } from '@bufferoverride/core';
 import { auth } from './auth.ts';
 import { mcp } from './mcp.ts';
 import { write } from './write.ts';
@@ -81,19 +81,18 @@ app.get('/v1/search', async (c) => {
   if (!q) return c.json({ error: 'missing_query', message: 'q is required' }, 400);
 
   // Raw input is never an FTS expression; see packages/core/src/fts.ts.
-  const attempts = ftsAttempts(q);
+  const attempts = searchAttempts(db(), q);
   if (attempts.length === 0) return c.json({ data: [], query: q });
 
   let rows: unknown[] = [];
-  for (const match of attempts) {
+  for (const attempt of attempts) {
     const result = await db().execute({
-    sql: `select q.code, q.slug, q.title, q.answer_count, q.created_at
-          from questions_fts f
-          join questions q on q.id = f.rowid
-          where questions_fts match ? and ${visible('q')}
-          order by bm25(questions_fts)
-          limit 25`,
-      args: [match],
+      sql: `select q.code, q.slug, q.title, q.answer_count, q.created_at
+            from ${attempt.from}
+            where ${attempt.where} and ${visible('q')}
+            order by ${attempt.orderBy}
+            limit 25`,
+      args: attempt.args,
     });
     rows = result.rows;
     if (rows.length) break;
