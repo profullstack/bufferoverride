@@ -4,7 +4,7 @@ import { principalFromAuthHeader, type Scope } from '@bufferoverride/auth';
 import {
   checkRate,
   findDuplicates,
-  ftsAttempts,
+  searchAttempts,
   parseReference,
   scanSecrets,
   validateComment,
@@ -448,18 +448,18 @@ async function runTool(name: string, args: Record<string, unknown>, caller: Call
       const limit = Math.min(Number(args.limit ?? 10), 50);
 
       // Raw input is never an FTS expression; see packages/core/src/fts.ts.
-      const attempts = ftsAttempts(query);
+      const attempts = searchAttempts(db(), query);
       if (attempts.length === 0) return { query, count: 0, results: [] };
 
       let found: Record<string, unknown>[] = [];
-      for (const match of attempts) {
+      for (const attempt of attempts) {
         const r = await db().execute({
           sql: `select q.code, q.slug, q.title, q.answer_count,
                        (select max(verified_count) from answers where question_id = q.id) as verified
-                from questions_fts f join questions q on q.id = f.rowid
-                where questions_fts match ? and ${visible('q')}
-                order by bm25(questions_fts) limit ?`,
-          args: [match, limit],
+                from ${attempt.from}
+                where ${attempt.where} and ${visible('q')}
+                order by ${attempt.orderBy} limit ?`,
+          args: [...attempt.args, limit],
         });
         found = r.rows as unknown as Record<string, unknown>[];
         if (found.length) break;

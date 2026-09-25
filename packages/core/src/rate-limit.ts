@@ -31,10 +31,12 @@ export async function checkRate(actorId: string, action: string): Promise<RateVe
   const cap = CAPS[action];
   if (!cap) return { allowed: true };
 
+  // created_at is ISO-8601 text on both databases: compare with a string made
+  // here, not datetime('now', ...), which Postgres types as a timestamp.
   const r = await db().execute({
     sql: `select count(*) as n from audit_events
-          where actor_id = ? and action = ? and created_at > datetime('now', '-1 hour')`,
-    args: [actorId, action],
+          where actor_id = ? and action = ? and created_at > ?`,
+    args: [actorId, action, new Date(Date.now() - 60 * 60 * 1000).toISOString()],
   });
   const used = (r.rows[0] as unknown as { n: number }).n;
   if (used < cap.perHour) return { allowed: true };

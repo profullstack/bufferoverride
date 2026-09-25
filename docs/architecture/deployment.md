@@ -6,7 +6,7 @@
 
 ## Decision
 
-**One repository. One Railway service. One Turso database.**
+**One repository. One service. One Postgres database.**
 
 Every process — the web PWA, the REST API, the MCP server, the media service and
 the background daemons — runs inside a single container under a process
@@ -29,7 +29,7 @@ supervisor, sharing one persistent volume and one database.
                        │
           ┌────────────┴────────────┐
           ▼                         ▼
-     Turso / libSQL           Cloudflare
+     Postgres (dev2)          Cloudflare
      (single database)        (DNS, CDN, WAF)
 ```
 
@@ -81,7 +81,7 @@ is a config change, not a rewrite.
 
 ## Data
 
-Turso/libSQL, one database, accessed only through `packages/db`.
+Postgres, one database, accessed only through `packages/db` (`@profullstack/libsql-pg` keeps the libSQL client surface; `migrations-pg/` is the Postgres edition of every migration).
 
 Two constraints that shape the schema and are much cheaper to honour now than to
 retrofit:
@@ -104,8 +104,7 @@ about them.
 
 | Variable | Purpose |
 |---|---|
-| `TURSO_DATABASE_URL` | libSQL endpoint |
-| `TURSO_AUTH_TOKEN` | libSQL auth token |
+| `DATABASE_URL` | Postgres URL (`postgres://...`); a `file:` path for a local libSQL database |
 | `MEDIA_ROOT` | volume mount, `/data/media` |
 | `PORT` | edge router port, supplied by Railway |
 | `PUBLIC_BASE_URL` | canonical origin for URLs, feeds and JSON-LD |
@@ -125,4 +124,4 @@ excluded by the PRD, so the target must be named before the media service ships;
 until then §25.4's backup and restore-drill metrics measure a job that does not
 exist.
 
-Turso is backed up by the provider; the volume is not.
+The Postgres cluster on dev2 is backed up with the box; the volume is not.

@@ -39,13 +39,13 @@ BufferOverride's answers to those:
 | Document | What it covers |
 |---|---|
 | [`docs/PRD.md`](docs/PRD.md) | Product requirements, v0.4 — the full spec |
-| [`docs/architecture/deployment.md`](docs/architecture/deployment.md) | Monorepo layout, the single-service Railway topology, Turso |
+| [`docs/architecture/deployment.md`](docs/architecture/deployment.md) | Monorepo layout, the single-service topology, Postgres |
 
 ## Shape
 
 One repository, one Railway service. The web app, the API, the media service and
 the background daemons run as supervised processes inside a single container
-against a single Turso database. See
+against a single Postgres database. See
 [`docs/architecture/deployment.md`](docs/architecture/deployment.md) for the
 topology and its trade-offs.
 
@@ -56,14 +56,14 @@ apps/web       Next.js App Router, server-rendered public pages
 apps/api       Hono — REST today, MCP next
 apps/media     volume-backed uploads and delivery
 apps/worker    indexing, counters, scheduled maintenance
-packages/db    libSQL client, forward-only migrations, schema
+packages/db    Postgres client (@profullstack/libsql-pg), forward-only migrations, schema
 ```
 
 ## Running it
 
 ```sh
 pnpm install
-cp .env.example .env          # fill in TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
+cp .env.example .env          # set DATABASE_URL (postgres://..., or file:... locally)
 pnpm --filter @bufferoverride/web build
 pnpm start                    # gateway on :3000, daemons behind it
 ```
