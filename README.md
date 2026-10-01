@@ -62,10 +62,11 @@ packages/db    Postgres client (@profullstack/libsql-pg), forward-only migration
 ## Running it
 
 ```sh
-pnpm install
+bun install
 cp .env.example .env          # set DATABASE_URL (postgres://..., or file:... locally)
-pnpm --filter @bufferoverride/web build
-pnpm start                    # gateway on :3000, daemons behind it
+bun run build                 # next build for apps/web
+bun --env-file=.env run start # gateway on :3000, daemons behind it
+bun test
 ```
 
 `GET /health` reports every daemon and whether the container is servable. A
