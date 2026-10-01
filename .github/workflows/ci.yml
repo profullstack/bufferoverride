@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - name: bun test (every suite, under Bun)
+        run: bun test
+      # The bo CLI is published to npm for Node >= 20 users, so its suite also
+      # runs on Node, the runtime it ships to.
+      - name: CLI tests on Node
+        working-directory: apps/cli
+        run: node --test
+      - run: bun run build
+      - name: Boot the gateway under Bun and serve pages
+        env:
+          DATABASE_URL: postgres://postgres@127.0.0.1:5432/postgres
+          AUTH_SECRET: ci-only-not-a-secret
+          PUBLIC_BASE_URL: http://127.0.0.1:3000
+          MEDIA_ROOT: ${{ runner.temp }}/media
+          SERVICES: web,api,media,worker
+          NODE_ENV: production
+          PORT: '3000'
+        run: |
+          bun apps/gateway/src/index.ts > gateway.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:3000/health > /dev/null && break
+            sleep 1
+          done
+          set -e
+          for path in /health / /questions /tags /docs /login /v1/tags /v1/questions /sitemap.xml /feed.xml /media/health; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000$path")
+            echo "$path $code"
+            test "$code" = 200
+          done
+          curl -s -X POST -H 'content-type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' http://127.0.0.1:3000/mcp | grep -q search_questions
+          cat gateway.log
+          ! grep -E 'exited \(code|Error' gateway.log
+
+  audit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun audit --audit-level=critical
