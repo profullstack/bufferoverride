@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "next build",
-    "start": "next start",
-    "dev": "next dev",
+    "build": "bun --bun next build",
+    "start": "bun --bun next start",
+    "dev": "bun --bun next dev",
     "test": "node --test test/*.test.ts"
   },
   "dependencies": {

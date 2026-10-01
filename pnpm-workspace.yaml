@@ -1,6 +1,0 @@
-packages:
-  - 'apps/*'
-  - 'packages/*'
-minimumReleaseAgeExclude:
-  - '@profullstack/x402-gateway@0.1.0'
-  - '@profullstack/libsql-pg@0.1.3'
