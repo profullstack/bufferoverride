@@ -20,6 +20,10 @@ RUN bun install --frozen-lockfile
 ENV NEXT_TELEMETRY_DISABLED=1
 # Next reads no runtime secrets at build time; pages are force-dynamic.
 RUN bun run build
+# Bun installs native optionals for both glibc and musl (it has no libc filter);
+# this image is glibc (Debian), so the musl builds (~130 MB: next-swc, libvips,
+# libsql) are dead weight.
+RUN rm -rf node_modules/.bun/*musl*
 
 FROM oven/bun:1.4.0-slim AS runtime
 WORKDIR /app
