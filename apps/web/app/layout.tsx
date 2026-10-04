@@ -98,6 +98,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/feed.xml" style={{ color: 'var(--text-secondary)' }}>
               Feed
             </a>
+            <nav
+              className="webring"
+              aria-label="Profullstack webring"
+              style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}
+            >
+              <a
+                href="https://rssamplifier.com/ring/profullstack/previous?from=https%3A%2F%2Fbufferoverride.com%2F"
+                rel="prev"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                {'<<'}
+              </a>
+              <a
+                href="https://rssamplifier.com/ring/profullstack"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Profullstack
+              </a>
+              <a
+                href="https://rssamplifier.com/ring/profullstack/next?from=https%3A%2F%2Fbufferoverride.com%2F"
+                rel="next"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                {'>>'}
+              </a>
+            </nav>
           </div>
         </footer>
         {/* Crawlproof analytics. afterInteractive so it never blocks first paint;
