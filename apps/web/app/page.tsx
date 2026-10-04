@@ -30,7 +30,7 @@ export default function Home() {
               </Button>
             </div>
             <div className={styles.heroMeta}>
-              <span>[YOUR INSTALL COMMAND]</span>
+              <span>npm install -g @profullstack/bufferoverride</span>
               <span className={styles.sep}>·</span>
               <span>MCP at bufferoverride.com/mcp</span>
             </div>
