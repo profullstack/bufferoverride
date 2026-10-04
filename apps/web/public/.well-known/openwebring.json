@@ -1,0 +1,6 @@
+{
+  "openwebring": "0.1",
+  "site": { "url": "https://bufferoverride.com/", "name": "BufferOverride" },
+  "made_by": "both",
+  "rings": [{ "ring": "https://rssamplifier.com/ring/profullstack", "slug": "bufferoverride-com" }]
+}
