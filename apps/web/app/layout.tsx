@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Footer } from '@profullstack/footer/react';
 import Script from 'next/script';
 import { SiteHeader } from './_components/site-header.tsx';
 import './globals.css';
@@ -75,67 +76,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SiteHeader />
         <main>{children}</main>
-        <footer
-          style={{
-            borderTop: '1px solid var(--border-default)',
-            marginTop: 8,
-            padding: '28px 0',
-            color: 'var(--text-muted)',
-            fontSize: 13,
-          }}
-        >
-          <div className="wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
-            <span>BufferOverride</span>
-            <a href="/docs/api" style={{ color: 'var(--text-secondary)' }}>
-              API
-            </a>
-            <a href="/mcp" style={{ color: 'var(--text-secondary)' }}>
-              MCP
-            </a>
-            <a href="/docs/cli" style={{ color: 'var(--text-secondary)' }}>
-              CLI
-            </a>
-            <a href="/feed.xml" style={{ color: 'var(--text-secondary)' }}>
-              Feed
-            </a>
-            <nav
-              className="webring"
-              aria-label="Profullstack webring"
-              style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}
-            >
-              <a
-                href="https://rssamplifier.com/ring/profullstack/previous?from=https%3A%2F%2Fbufferoverride.com%2F"
-                rel="prev"
-                title="Previous site"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {'<<'}
-              </a>
-              <a
-                href="https://rssamplifier.com/ring/profullstack"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Profullstack
-              </a>
-              <a
-                href="https://rssamplifier.com/ring/profullstack/next?from=https%3A%2F%2Fbufferoverride.com%2F"
-                rel="next"
-                title="Next site"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {'>>'}
-              </a>
-              <a
-                href="https://rssamplifier.com/ring/profullstack/random?from=https%3A%2F%2Fbufferoverride.com%2F"
-                title="Random site"
-                aria-label="Random site"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {'⚄'}
-              </a>
-            </nav>
-          </div>
-        </footer>
+        <div style={{ marginTop: 8, color: 'var(--text-secondary)' }}>
+          <Footer
+            site="https://bufferoverride.com/"
+            links={[
+              { label: 'API', href: '/docs/api' },
+              { label: 'MCP', href: '/mcp' },
+              { label: 'CLI', href: '/docs/cli' },
+              { label: 'Feed', href: '/feed.xml' },
+            ]}
+          />
+        </div>
         {/* Crawlproof analytics. afterInteractive so it never blocks first paint;
             the script patches history.pushState itself, so client-side route
             changes are counted without wiring it to the Next router. */}
