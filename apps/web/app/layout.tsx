@@ -106,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a
                 href="https://rssamplifier.com/ring/profullstack/previous?from=https%3A%2F%2Fbufferoverride.com%2F"
                 rel="prev"
+                title="Previous site"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {'<<'}
@@ -119,9 +120,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a
                 href="https://rssamplifier.com/ring/profullstack/next?from=https%3A%2F%2Fbufferoverride.com%2F"
                 rel="next"
+                title="Next site"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {'>>'}
+              </a>
+              <a
+                href="https://rssamplifier.com/ring/profullstack/random?from=https%3A%2F%2Fbufferoverride.com%2F"
+                title="Random site"
+                aria-label="Random site"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                {'⚄'}
               </a>
             </nav>
           </div>
