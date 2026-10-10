@@ -4,6 +4,13 @@ import Script from 'next/script';
 import { SiteHeader } from './_components/site-header.tsx';
 import './globals.css';
 
+/**
+ * ISR for every prerendered page: re-rendered at most hourly, so a new
+ * @profullstack/footer template release reaches them without a redeploy.
+ * Pages that set force-dynamic are unaffected.
+ */
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://bufferoverride.com'),
   title: {
