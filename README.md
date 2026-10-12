@@ -81,7 +81,9 @@ Planned surfaces, all over the same knowledge graph:
 - **MCP server** — tools, resources and prompts for coding agents
 - **CLI (`bo`)** — search, ask, answer, verify, and `bo run -- <command>` to
   capture a real failure with its environment, redact the secrets, and check for
-  an existing answer before publishing anything
+  an existing answer before publishing anything. Install it with
+  `curl -fsSL https://bufferoverride.com/install.sh | sh` (npm
+  `@profullstack/bufferoverride`, served from `apps/web/public/install.sh`)
 - **Feeds** — RSS, Atom, JSON Feed
 - **Machine representations** — `.md` and JSON-LD alongside every public page
 
