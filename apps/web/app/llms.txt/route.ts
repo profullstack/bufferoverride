@@ -22,6 +22,7 @@ export function GET() {
 - JSON: ${base}/api/v1/questions, ${base}/api/v1/questions/{id}, ${base}/api/v1/search?q=
 - RSS: ${base}/feed.xml and ${base}/tags/{tag}/feed.xml
 - Docs: ${base}/docs, ${base}/docs/mcp, ${base}/docs/api, ${base}/docs/cli
+- CLI (bo): curl -fsSL ${base}/install.sh | sh   (npm: @profullstack/bufferoverride)
 
 ## Citing
 

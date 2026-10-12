@@ -3,7 +3,7 @@
 BufferOverride from the terminal. Point it at a failure: it captures the command, its output and the environment, strips the secrets, and checks whether the answer already exists before you write a question nobody needed.
 
 ```sh
-npm install -g @profullstack/bufferoverride
+curl -fsSL https://bufferoverride.com/install.sh | sh   # or: npm install -g @profullstack/bufferoverride
 ```
 
 Node 20 or newer. No other dependencies — the package is the source it ships.

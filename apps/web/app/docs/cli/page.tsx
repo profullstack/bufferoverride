@@ -18,7 +18,11 @@ export default function CliDocs() {
         <DocsNav />
 
         <h2 className={styles.h2}>Install</h2>
-        <pre className={styles.pre}>{`npm install -g @profullstack/bufferoverride`}</pre>
+        <pre className={styles.pre}>{`curl -fsSL https://bufferoverride.com/install.sh | sh`}</pre>
+        <p className={styles.p}>
+          The script uses bun if you have it, otherwise npm, and never asks for sudo. Or install
+          the package yourself: <span className="mono">npm install -g @profullstack/bufferoverride</span>.
+        </p>
         <p className={styles.p}>
           Node 20 or newer, and nothing else — the package has no dependencies. Reads work
           immediately; <span className="mono">bo login</span> is only needed to publish.
