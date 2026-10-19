@@ -63,7 +63,7 @@ function Unit() {
   return <aside ref={ref} data-ad-network={AD_NETWORK} data-cp-ad="" className={styles.unit} />;
 }
 
-/** One CrawlProof unit above the footer; a fresh unit per page view. */
+/** One CrawlProof unit at the top of the content; a fresh unit per page view. */
 export function AdUnit() {
   const pathname = usePathname() ?? '/';
   if (NO_AD_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;

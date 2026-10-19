@@ -83,9 +83,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <SiteHeader />
-        {/* The page's one ad sits at the top of the content, never against the footer. */}
-        <AdUnit />
-        <main>{children}</main>
+        <main>
+          {/* Top of the content, never down by the footer. */}
+          <AdUnit />
+          {children}
+        </main>
         <footer className="site-footer">
           <span>&copy; {new Date().getFullYear()} <a href="https://profullstack.com/">Profullstack, Inc.</a></span>
           <nav aria-label="Footer">
