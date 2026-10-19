@@ -3,11 +3,12 @@ import { Footer } from '@profullstack/footer/react';
 import Script from 'next/script';
 import { SiteHeader } from './_components/site-header.tsx';
 import { AdUnit } from './_components/ad-unit.tsx';
+import { PitFooter } from './_components/pit-footer.tsx';
 import './globals.css';
 
 /**
- * ISR for every prerendered page: re-rendered at most hourly, so a new
- * @profullstack/footer template release reaches them without a redeploy.
+ * ISR for every prerendered page: re-rendered at most hourly, so a change to
+ * the pit.world network footer reaches them without a redeploy.
  * Pages that set force-dynamic are unaffected.
  */
 export const revalidate = 3600;
@@ -109,6 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://crawlproof.com/stats.js"
           strategy="afterInteractive"
         />
+        <PitFooter />
       </body>
     </html>
   );
