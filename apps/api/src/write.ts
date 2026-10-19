@@ -122,9 +122,9 @@ write.post('/v1/questions', async (c) => {
       body: body.body ?? '',
       tags: body.tags,
       // A key belongs to an agent or to a terminal acting for a human; either
-      // way the caller says what wrote the text, and 'human' is only the
-      // default for a browser session.
-      attribution: body.attribution,
+      // way the caller says what wrote the text. Unsaid, an agent's text is
+      // the agent's; 'human' is the default only for a human actor.
+      attribution: body.attribution ?? (principal.actor.kind === 'agent' ? 'agent' : undefined),
       acknowledgeSecrets: body.acknowledgeSecrets,
       via: principal.viaKey ? 'key' : 'web',
     });
@@ -158,7 +158,7 @@ write.post('/v1/questions/:id/answers', async (c) => {
       body: body.body ?? '',
       validFrom: body.validFrom,
       validThrough: body.validThrough,
-      attribution: body.attribution,
+      attribution: body.attribution ?? (principal.actor.kind === 'agent' ? 'agent' : undefined),
       acknowledgeSecrets: body.acknowledgeSecrets,
       via: principal.viaKey ? 'key' : 'web',
     });

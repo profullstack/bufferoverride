@@ -13,13 +13,20 @@ import { randomBytes } from 'node:crypto';
 const CODE_BYTES = 5; // 40 bits → 10 hex characters
 
 export function newCode(): string {
-  return randomBytes(CODE_BYTES).toString('hex');
+  // Ten hex characters are all decimal digits about 0.9% of the time, and an
+  // all-digit code would parse as a legacy id and resolve to nothing. Draw
+  // again until it carries a letter.
+  for (;;) {
+    const code = randomBytes(CODE_BYTES).toString('hex');
+    if (!isLegacyId(code)) return code;
+  }
 }
 
 /**
- * Codes are hex, ids are decimal. A bare decimal string is therefore always a
- * legacy id and never a code — which is what lets one route parameter carry
- * both without ambiguity.
+ * Codes are hex with at least one letter, ids are decimal. A bare decimal
+ * string is therefore always a legacy id and never a code — which is what lets
+ * one route parameter carry both without ambiguity. `newCode` guarantees the
+ * letter; migration 0012 repaired the all-digit codes issued before it did.
  */
 const CODE_RE = /^[0-9a-f]{6,32}$/i;
 
