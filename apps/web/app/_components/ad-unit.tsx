@@ -5,12 +5,15 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import styles from './ad-unit.module.css';
 
-/** CrawlProof ad slot for bufferoverride.com. Manage it at https://crawlproof.com/ads/slots */
-const AD_SLOT = '76f0e1df-7d63-4298-9d01-114d55802219';
+/**
+ * CrawlProof ad.network slot for bufferoverride.com (publishers workspace).
+ * Manage it at https://crawlproof.com/ads/slots. The slot serves only
+ * banner_300x250 and text_link; a 300x250 fits every viewport we support.
+ */
+const AD_SLOT = '821367ac-566c-4b55-a5bb-eefe41ce4864';
+const AD_NETWORK = 'tOBZMpdTr-2jI6f9';
+const AD_FORMAT = 'banner_300x250';
 const AD_SCRIPT_SRC = 'https://crawlproof.com/ad.js';
-
-/** A 728x90 needs the full column; anything narrower gets the fluid text_link. */
-const LEADERBOARD_QUERY = '(min-width: 768px)';
 
 /** Sign-in, account and moderation flows never carry an ad. */
 const NO_AD_PREFIXES = ['/login', '/signup', '/account', '/moderation', '/notifications', '/ask'];
@@ -47,17 +50,17 @@ function requestAdScan(): () => void {
 }
 
 function Unit() {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el || el.dataset.slot) return;
     // Race-free: the div renders without data-slot, so ad.js's own pass skips
-    // it. One format from the viewport, then slot, then scan: fills once.
-    el.dataset.format = window.matchMedia(LEADERBOARD_QUERY).matches ? 'banner_728x90' : 'text_link';
+    // it. Format, then slot, then scan: fills once.
+    el.dataset.format = AD_FORMAT;
     el.dataset.slot = AD_SLOT;
     return requestAdScan();
   }, []);
-  return <div ref={ref} data-cp-ad="" className={styles.unit} />;
+  return <aside ref={ref} data-ad-network={AD_NETWORK} data-cp-ad="" className={styles.unit} />;
 }
 
 /** One CrawlProof unit above the footer; a fresh unit per page view. */
