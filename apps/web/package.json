@@ -18,7 +18,7 @@
     "@bufferoverride/reputation": "workspace:*",
     "@bufferoverride/ui": "workspace:*",
     "@profullstack/footer": "latest",
-    "@profullstack/x402-gateway": "^0.7.0",
+    "@profullstack/x402-gateway": "^0.10.1",
     "@simplewebauthn/browser": "^13.2.2",
     "next": "16.3.8",
     "react": "^19.2.0",
