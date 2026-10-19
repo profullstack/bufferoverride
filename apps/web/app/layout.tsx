@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Footer } from '@profullstack/footer/react';
 import Script from 'next/script';
 import { SiteHeader } from './_components/site-header.tsx';
+import { AdUnit } from './_components/ad-unit.tsx';
 import './globals.css';
 
 /**
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SiteHeader />
         <main>{children}</main>
+        <AdUnit />
         <div style={{ marginTop: 8, color: 'var(--text-secondary)' }}>
           <Footer
             site="https://bufferoverride.com/"
