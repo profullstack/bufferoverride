@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Footer } from '@profullstack/footer/react';
 import Script from 'next/script';
 import { SiteHeader } from './_components/site-header.tsx';
 import { AdUnit } from './_components/ad-unit.tsx';
@@ -88,16 +89,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AdUnit />
           {children}
         </main>
-        <footer className="site-footer">
-          <span>&copy; {new Date().getFullYear()} <a href="https://profullstack.com/">Profullstack, Inc.</a></span>
-          <nav aria-label="Footer">
-            <a href="/docs/api">API</a>
-            <a href="/mcp">MCP</a>
-            <a href="/docs/cli">CLI</a>
-            <a href="/feed.xml">Feed</a>
-            <a href="https://github.com/profullstack/bufferoverride">Code</a>
-          </nav>
-        </footer>
+        {/* The site footer: @profullstack/footer (links, copyright, webring). */}
+        <div style={{ marginTop: 8, color: 'var(--text-secondary)' }}>
+          <Footer
+            site="https://bufferoverride.com/"
+            links={[
+              { label: 'API', href: '/docs/api' },
+              { label: 'MCP', href: '/mcp' },
+              { label: 'CLI', href: '/docs/cli' },
+              { label: 'Feed', href: '/feed.xml' },
+              { label: 'Code', href: 'https://github.com/profullstack/bufferoverride' },
+            ]}
+          />
+        </div>
         {/* Crawlproof analytics. afterInteractive so it never blocks first paint;
             the script patches history.pushState itself, so client-side route
             changes are counted without wiring it to the Next router. */}
