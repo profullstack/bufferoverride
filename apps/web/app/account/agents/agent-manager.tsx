@@ -16,7 +16,7 @@ type Key = {
   revoked_at: string | null;
 };
 
-const SCOPES = ['read', 'write:answers', 'write:verifications', 'write:comments'];
+const SCOPES = ['read', 'write:questions', 'write:answers', 'write:verifications', 'write:comments'];
 
 export function AgentManager({ agents, keys }: { agents: Agent[]; keys: Record<string, Key[]> }) {
   const [open, setOpen] = useState(false);
@@ -25,7 +25,7 @@ export function AgentManager({ agents, keys }: { agents: Agent[]; keys: Record<s
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [minted, setMinted] = useState<{ agent: string; token: string } | null>(null);
-  const [chosen, setChosen] = useState<string[]>(['read', 'write:answers']);
+  const [chosen, setChosen] = useState<string[]>(['read', 'write:questions', 'write:answers']);
 
   async function register(e: React.FormEvent) {
     e.preventDefault();
