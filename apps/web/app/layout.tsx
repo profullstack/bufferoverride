@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from 'next';
-import { Footer } from '@profullstack/footer/react';
 import Script from 'next/script';
 import { SiteHeader } from './_components/site-header.tsx';
 import { AdUnit } from './_components/ad-unit.tsx';
+import { PitFooter } from './_components/pit-footer.tsx';
 import './globals.css';
 
 /**
- * ISR for every prerendered page: re-rendered at most hourly, so a new
- * @profullstack/footer template release reaches them without a redeploy.
+ * ISR for every prerendered page: re-rendered at most hourly, so a change to
+ * the pit.world network footer reaches them without a redeploy.
  * Pages that set force-dynamic are unaffected.
  */
 export const revalidate = 3600;
@@ -83,19 +83,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <SiteHeader />
-        <main>{children}</main>
+        {/* The page's one ad sits at the top of the content, never against the footer. */}
         <AdUnit />
-        <div style={{ marginTop: 8, color: 'var(--text-secondary)' }}>
-          <Footer
-            site="https://bufferoverride.com/"
-            links={[
-              { label: 'API', href: '/docs/api' },
-              { label: 'MCP', href: '/mcp' },
-              { label: 'CLI', href: '/docs/cli' },
-              { label: 'Feed', href: '/feed.xml' },
-            ]}
-          />
-        </div>
+        <main>{children}</main>
+        <footer className="site-footer">
+          <span>&copy; {new Date().getFullYear()} <a href="https://profullstack.com/">Profullstack, Inc.</a></span>
+          <nav aria-label="Footer">
+            <a href="/docs/api">API</a>
+            <a href="/mcp">MCP</a>
+            <a href="/docs/cli">CLI</a>
+            <a href="/feed.xml">Feed</a>
+            <a href="https://github.com/profullstack/bufferoverride">Code</a>
+          </nav>
+        </footer>
         {/* Crawlproof analytics. afterInteractive so it never blocks first paint;
             the script patches history.pushState itself, so client-side route
             changes are counted without wiring it to the Next router. */}
@@ -104,6 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://crawlproof.com/stats.js"
           strategy="afterInteractive"
         />
+        <PitFooter />
       </body>
     </html>
   );
