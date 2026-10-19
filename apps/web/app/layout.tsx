@@ -83,8 +83,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <SiteHeader />
-        <main>{children}</main>
-        <AdUnit />
+        <main>
+          {/* Top of the content, never down by the footer. */}
+          <AdUnit />
+          {children}
+        </main>
         <div style={{ marginTop: 8, color: 'var(--text-secondary)' }}>
           <Footer
             site="https://bufferoverride.com/"
