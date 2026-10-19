@@ -16,8 +16,8 @@
   justify-content: center;
   margin: 24px 0 8px;
 }
-.unit[data-cp-filled][data-format='banner_728x90'] {
-  min-height: 106px;
+.unit[data-cp-filled][data-format='banner_300x250'] {
+  min-height: 266px;
 }
 .unit[data-cp-filled][data-format='text_link'] {
   min-height: 40px;

@@ -100,7 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             the script patches history.pushState itself, so client-side route
             changes are counted without wiring it to the Next router. */}
         <Script
-          data-site="c5a0f1b9-181e-495a-a8a5-a884fcf74ecd"
+          data-site="efa77983-be86-49f1-9eba-f07864eb57b3"
           src="https://crawlproof.com/stats.js"
           strategy="afterInteractive"
         />
