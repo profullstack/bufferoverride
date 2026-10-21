@@ -1,5 +1,6 @@
 import { Badge, CheckIcon, VersionPill } from '@bufferoverride/ui';
 import { daysAgo, type QuestionRow } from '../_lib/queries.ts';
+import { profilePath } from '../_lib/openprofile.ts';
 import styles from '../list.module.css';
 
 export function QuestionResult({ q }: { q: QuestionRow }) {
@@ -28,6 +29,11 @@ export function QuestionResult({ q }: { q: QuestionRow }) {
         <span style={{ flexGrow: 1 }} />
         <span className={styles.meta}>
           {q.answer_count} {q.answer_count === 1 ? 'answer' : 'answers'} · asked{' '}
+          {q.author ? (
+            <>
+              by <a href={profilePath(q.author)}>@{q.author}</a>{' '}
+            </>
+          ) : null}
           {daysAgo(q.created_at)}
         </span>
       </div>
