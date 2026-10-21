@@ -3,6 +3,7 @@ import { db, visible } from '@bufferoverride/db';
 import { Badge, Card, IdentityChip } from '@bufferoverride/ui';
 import { topTagsFor } from '@bufferoverride/reputation';
 import { daysAgo } from '../../_lib/queries.ts';
+import { openProfilePath } from '../../_lib/openprofile.ts';
 import styles from '../../list.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,10 @@ type Params = { params: Promise<{ username: string }> };
 
 export async function generateMetadata({ params }: Params) {
   const { username } = await params;
-  return { title: username };
+  return {
+    title: username,
+    alternates: { types: { 'text/markdown': openProfilePath(username) } },
+  };
 }
 
 export default async function Profile({ params }: Params) {
@@ -58,12 +62,16 @@ export default async function Profile({ params }: Params) {
 
   return (
     <div className="wrap">
+      <link rel="openprofile" href={openProfilePath(actor.username)} />
       <div className={styles.page} style={{ maxWidth: 760 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
           <IdentityChip name={actor.username} kind={actor.kind} />
           <span className={styles.spacer} />
           <Badge variant="secondary">joined {daysAgo(actor.created_at)}</Badge>
           <Badge variant="verified">{independent} independent verifications</Badge>
+          <a className="mono" href={openProfilePath(actor.username)} style={{ fontSize: 12 }}>
+            openprofile.md
+          </a>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
