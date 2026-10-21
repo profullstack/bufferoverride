@@ -8,11 +8,11 @@ import styles from './ad-unit.module.css';
 /**
  * CrawlProof ad.network slot for bufferoverride.com (publishers workspace).
  * Manage it at https://crawlproof.com/ads/slots. The slot serves only
- * banner_300x250 and text_link; a 300x250 fits every viewport we support.
+ * banner_300x250 and text_link; we use only the low-profile text_link line.
  */
 const AD_SLOT = '821367ac-566c-4b55-a5bb-eefe41ce4864';
 const AD_NETWORK = 'tOBZMpdTr-2jI6f9';
-const AD_FORMAT = 'banner_300x250';
+const AD_FORMAT = 'text_link';
 const AD_SCRIPT_SRC = 'https://crawlproof.com/ad.js';
 
 /** Sign-in, account and moderation flows never carry an ad. */
@@ -63,9 +63,11 @@ function Unit() {
   return <aside ref={ref} data-ad-network={AD_NETWORK} data-cp-ad="" className={styles.unit} />;
 }
 
-/** One CrawlProof unit at the top of the content; a fresh unit per page view. */
+/** One CrawlProof unit at the top of the content; a fresh unit per page view.
+ *  The homepage carries no ad. */
 export function AdUnit() {
   const pathname = usePathname() ?? '/';
+  if (pathname === '/') return null;
   if (NO_AD_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
   return (
     <div className={styles.wrap}>
