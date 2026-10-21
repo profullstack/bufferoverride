@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { db, visible } from '@bufferoverride/db';
-import { Badge, Card, IdentityChip } from '@bufferoverride/ui';
+import { Badge, Button, Card, IdentityChip } from '@bufferoverride/ui';
 import { topTagsFor } from '@bufferoverride/reputation';
 import { daysAgo } from '../../_lib/queries.ts';
-import { openProfilePath } from '../../_lib/openprofile.ts';
+import { loadOpenProfileActor, openProfilePath, profilePath } from '../../_lib/openprofile.ts';
 import styles from '../../list.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -58,21 +58,69 @@ export default async function Profile({ params }: Params) {
   ]);
 
   const independent = (verifications.rows[0] as unknown as { n: number }).n;
-  const tagRep = await topTagsFor(actor.id);
+  const [tagRep, profile] = await Promise.all([topTagsFor(actor.id), loadOpenProfileActor(actor.username)]);
+  const operators = profile?.operators ?? [];
+  const kindLabel = { human: 'person', agent: 'agent', organization: 'organization' }[actor.kind];
+  const field = { fontSize: 12, color: 'var(--text-muted)', minWidth: 72 } as const;
 
   return (
     <div className="wrap">
       <link rel="openprofile" href={openProfilePath(actor.username)} />
       <div className={styles.page} style={{ maxWidth: 760 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-          <IdentityChip name={actor.username} kind={actor.kind} />
-          <span className={styles.spacer} />
-          <Badge variant="secondary">joined {daysAgo(actor.created_at)}</Badge>
-          <Badge variant="verified">{independent} independent verifications</Badge>
-          <a className="mono" href={openProfilePath(actor.username)} style={{ fontSize: 12 }}>
-            openprofile.md
-          </a>
-        </div>
+        {/* The OpenProfile (logicsrc.com/openprofile), shown as a page; the file is the button. */}
+        <Card>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{actor.display_name || actor.username}</h1>
+              <IdentityChip name={`@${actor.username}`} kind={actor.kind} />
+            </div>
+            <span className={styles.spacer} />
+            <Button href={openProfilePath(actor.username)} size="sm">
+              openprofile.md
+            </Button>
+          </div>
+          {actor.bio ? <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>{actor.bio}</p> : null}
+          <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', margin: 0, fontSize: 13.5 }}>
+            <dt style={field}>Kind</dt>
+            <dd style={{ margin: 0 }}>{kindLabel}</dd>
+            <dt style={field}>Handle</dt>
+            <dd className="mono" style={{ margin: 0 }}>@{actor.username}</dd>
+            {actor.website ? (
+              <>
+                <dt style={field}>Web</dt>
+                <dd style={{ margin: 0 }}>
+                  {/^https?:\/\//i.test(actor.website) ? (
+                    <a href={actor.website} rel="me nofollow ugc">
+                      {actor.website.replace(/^https?:\/\//i, '')}
+                    </a>
+                  ) : (
+                    actor.website
+                  )}
+                </dd>
+              </>
+            ) : null}
+            <dt style={field}>Joined</dt>
+            <dd style={{ margin: 0 }}>{daysAgo(actor.created_at)}</dd>
+            {actor.kind === 'agent' ? (
+              <>
+                <dt style={field}>Operator</dt>
+                <dd style={{ margin: 0 }}>
+                  {operators.length
+                    ? operators.map((op, i) => (
+                        <span key={op}>
+                          {i ? ', ' : null}
+                          <a href={profilePath(op)}>@{op}</a>
+                        </span>
+                      ))
+                    : 'unstated'}
+                </dd>
+              </>
+            ) : null}
+          </dl>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <Badge variant="verified">{independent} independent verifications</Badge>
+          </div>
+        </Card>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <span className="mono" style={{ fontSize: 20, fontWeight: 700 }}>
@@ -90,7 +138,6 @@ export default async function Profile({ params }: Params) {
             </>
           ) : null}
         </div>
-        {actor.bio ? <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{actor.bio}</p> : null}
 
         <Card>
           <div style={{ fontSize: 13, fontWeight: 650 }}>Questions ({questions.rows.length})</div>
