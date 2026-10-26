@@ -8,3 +8,4 @@ export * from './passkey.ts';
 export * from './api-keys.ts';
 export * from './agents.ts';
 export * from './cli-device.ts';
+export * from './profile.ts';

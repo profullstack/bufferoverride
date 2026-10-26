@@ -1,8 +1,10 @@
 import { db } from '@bufferoverride/db';
+import { saveSignupProfile, type ProfileFields } from '@profullstack/profile';
 import { canonicalOrigin } from './origin.ts';
 import { findOrCreateByEmail, type Actor } from './actors.ts';
 import { sendMagicLink } from './email.ts';
 import { hashToken, isExpired, minutesFromNow, newToken } from './tokens.ts';
+import { profileStore } from './profile.ts';
 
 const LINK_MINUTES = 15;
 const MAX_PER_HOUR = 5;
@@ -19,11 +21,16 @@ export function isEmail(value: string): boolean {
  * Always resolves the same way whether or not the address has an account, and
  * whether or not it was rate limited — the caller must report success either
  * way, otherwise this endpoint becomes a way to enumerate who has registered.
+ *
+ * `profile` is the /signup form's fields, already through validateProfile. It
+ * rides on the link and is saved when the link is followed, because that is
+ * when the actor is created.
  */
 export async function requestMagicLink(
   email: string,
   ip?: string,
   origin?: string,
+  profile?: Partial<ProfileFields> | null,
 ): Promise<void> {
   const normalized = email.trim().toLowerCase();
   if (!isEmail(normalized)) return;
@@ -43,9 +50,15 @@ export async function requestMagicLink(
 
   const token = newToken();
   await db().execute({
-    sql: `insert into magic_links (email, token_hash, expires_at, requested_ip)
-          values (?, ?, ?, ?)`,
-    args: [normalized, hashToken(token), minutesFromNow(LINK_MINUTES), ip ?? null],
+    sql: `insert into magic_links (email, token_hash, expires_at, requested_ip, profile)
+          values (?, ?, ?, ?, ?)`,
+    args: [
+      normalized,
+      hashToken(token),
+      minutesFromNow(LINK_MINUTES),
+      ip ?? null,
+      profile ? JSON.stringify(profile) : null,
+    ],
   });
 
   const base = origin ?? canonicalOrigin();
@@ -57,11 +70,17 @@ export async function consumeMagicLink(
   token: string,
 ): Promise<{ actor: Actor; created: boolean } | null> {
   const r = await db().execute({
-    sql: `select id, email, expires_at, consumed_at from magic_links where token_hash = ?`,
+    sql: `select id, email, expires_at, consumed_at, profile from magic_links where token_hash = ?`,
     args: [hashToken(token)],
   });
   const row = r.rows[0] as unknown as
-    | { id: number; email: string; expires_at: string; consumed_at: string | null }
+    | {
+        id: number;
+        email: string;
+        expires_at: string;
+        consumed_at: string | null;
+        profile: string | null;
+      }
     | undefined;
 
   if (!row || row.consumed_at || isExpired(row.expires_at)) return null;
@@ -74,5 +93,16 @@ export async function consumeMagicLink(
   // Lost the race against a concurrent use of the same link.
   if (claimed.rowsAffected === 0) return null;
 
-  return findOrCreateByEmail(row.email);
+  const result = await findOrCreateByEmail(row.email);
+  if (row.profile) await saveProfile(result.actor.id, row.email, row.profile);
+  return result;
+}
+
+/** Store the signup profile a link carried. A failure here never blocks sign-in. */
+async function saveProfile(actorId: string, email: string, raw: string): Promise<void> {
+  try {
+    await saveSignupProfile(profileStore(), actorId, JSON.parse(raw), { email });
+  } catch (err) {
+    console.error('[auth] signup profile save failed:', err instanceof Error ? err.message : err);
+  }
 }
