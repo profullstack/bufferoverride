@@ -6,7 +6,7 @@
 # each daemon with process.execPath, so web (next start), api, media and worker
 # all run under Bun too. There is no node binary in this image: a stray `node`
 # call fails loudly instead of silently picking another runtime.
-FROM oven/bun:1.4.0-slim AS build
+FROM oven/bun:1.4.4-slim AS build
 WORKDIR /app
 # Copy the whole tree before installing.
 #
@@ -25,7 +25,7 @@ RUN bun run build
 # libsql) are dead weight.
 RUN rm -rf node_modules/.bun/*musl*
 
-FROM oven/bun:1.4.0-slim AS runtime
+FROM oven/bun:1.4.4-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 # Bun 1.4 workspaces use the isolated linker (node_modules/.bun + symlinks), so

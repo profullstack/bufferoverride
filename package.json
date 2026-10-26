@@ -2,7 +2,7 @@
   "name": "bufferoverride",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.4",
   "scripts": {
     "build": "bun --filter @bufferoverride/web build",
     "start": "bun apps/gateway/src/index.ts",
@@ -14,5 +14,8 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "source-map-js": "^1.2.2"
+  }
 }
