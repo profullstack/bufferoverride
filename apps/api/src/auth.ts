@@ -16,6 +16,7 @@ import {
   isEmail,
   linkedIdentities,
   listPasskeys,
+  profileStore,
   readCookie,
   readState,
   registrationOptions,
@@ -27,6 +28,7 @@ import {
   verifyRegistration,
 } from '@bufferoverride/auth';
 import { unreadCount } from '@bufferoverride/notifications';
+import { createProfileHandlers, validateProfile, type ProfileFields } from '@profullstack/profile';
 
 export const auth = new Hono();
 
@@ -61,15 +63,28 @@ async function currentActor(c: { req: { header(name: string): string | undefined
 }
 
 // ── magic link ────────────────────────────────────────────────────────────
+type MagicBody = { email?: string; signup?: boolean } & Record<string, unknown>;
+
 auth.post('/v1/auth/magic', async (c) => {
-  const body = await c.req.json<{ email?: string }>().catch(() => ({}) as { email?: string });
+  const body = await c.req.json<MagicBody>().catch(() => ({}) as MagicBody);
   const email = (body.email ?? '').trim();
+
+  // /signup sends `signup: true` with the profile fields; plain sign-in never
+  // asks for them. Checked before any link is issued, so a refused form never
+  // mails anybody. The errors are about what was typed, not about whether the
+  // address has an account, so they enumerate nothing.
+  let profile: Partial<ProfileFields> | null = null;
+  if (body.signup === true) {
+    const check = validateProfile(body);
+    if (!check.ok) return c.json({ ok: false, error: 'invalid_profile', errors: check.errors }, 400);
+    profile = check.profile;
+  }
 
   // The response never distinguishes a known address from an unknown one, an
   // invalid one, or a rate-limited one: anything else enumerates our users.
   if (isEmail(email)) {
     try {
-      await requestMagicLink(email, c.req.header('x-forwarded-for'), originOf(c));
+      await requestMagicLink(email, c.req.header('x-forwarded-for'), originOf(c), profile);
     } catch (err) {
       console.error('[auth] magic link request failed:', err);
     }
@@ -88,6 +103,25 @@ auth.get('/auth/magic', async (c) => {
   c.header('set-cookie', sessionCookie(session, undefined, originOf(c)));
   return c.redirect(result.created ? '/account?welcome=1' : '/', 302);
 });
+
+// ── signup profile ───────────────────────────────────────────────────────
+// GET/PUT/PATCH /api/v1/me/profile (arrives here as /v1/me/profile). Session
+// cookie only; the handlers answer 401 JSON to anybody else. Built on first
+// request so importing this module never opens the database.
+let profileHandlers: ReturnType<typeof createProfileHandlers> | undefined;
+function profileRoutes() {
+  profileHandlers ??= createProfileHandlers({
+    store: profileStore(),
+    getUser: async (req) => {
+      const actor = await actorFromSessionToken(readCookie(req.headers.get('cookie'), SESSION_COOKIE));
+      return actor ? { id: actor.id, email: actor.email } : null;
+    },
+  });
+  return profileHandlers;
+}
+auth.get('/v1/me/profile', (c) => profileRoutes().GET(c.req.raw));
+auth.put('/v1/me/profile', (c) => profileRoutes().PUT(c.req.raw));
+auth.patch('/v1/me/profile', (c) => profileRoutes().PATCH(c.req.raw));
 
 // ── CoinPay OAuth ─────────────────────────────────────────────────────────
 auth.get('/auth/coinpay/start', async (c) => {

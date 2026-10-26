@@ -5,9 +5,12 @@ import {
   actorFromSessionToken,
   linkedIdentities,
   listPasskeys,
+  profileStore,
 } from '@bufferoverride/auth';
+import { COLUMNS } from '@profullstack/profile';
 import { Badge, Button } from '@bufferoverride/ui';
 import { PasskeyManager } from '../_components/passkey-manager.tsx';
+import { ProfileForm } from '../_components/profile-form.tsx';
 import { SettingsNav } from './_nav.tsx';
 import styles from './settings.module.css';
 import authStyles from '../_components/auth.module.css';
@@ -25,10 +28,16 @@ export default async function Account({
   const actor = await actorFromSessionToken(jar.get(SESSION_COOKIE)?.value);
   if (!actor) redirect('/login');
 
-  const [identities, passkeys] = await Promise.all([
+  const [identities, passkeys, profile] = await Promise.all([
     linkedIdentities(actor.id),
     listPasskeys(actor.id),
+    profileStore().get(actor.id),
   ]);
+  // Only the six fields cross to the client form, as plain strings.
+  const profileValues: Record<string, string | null> = Object.fromEntries(
+    COLUMNS.map((c) => [c, profile?.[c] ?? null]),
+  );
+  profileValues.email ??= actor.email;
   const coinpay = identities.find((i) => i.provider === 'coinpay');
 
   return (
@@ -65,6 +74,17 @@ export default async function Account({
               <span className={styles.k}>Email</span>
               <span className={styles.v}>{actor.email ?? 'not set'}</span>
             </div>
+          </div>
+
+          <div className={styles.section}>
+            <div className={styles.sectionHead}>
+              <span className={styles.sectionTitle}>Your details</span>
+            </div>
+            <p className={styles.sectionBody}>
+              Private: never shown on your public profile. Only the email and your name are
+              required.
+            </p>
+            <ProfileForm initial={profileValues} />
           </div>
 
           <div className={styles.section}>

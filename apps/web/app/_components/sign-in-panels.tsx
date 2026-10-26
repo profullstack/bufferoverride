@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { startAuthentication } from '@simplewebauthn/browser';
+import { ProfileFields } from '@profullstack/profile/react';
 import styles from './auth.module.css';
+
+/** /signup asks for these beside the email box; /login never does. */
+const SIGNUP_FIELDS = ['first_name', 'last_name', 'company_domain', 'job_title', 'linkedin_url'] as const;
 
 const ERRORS: Record<string, string> = {
   invalid_link: 'That link was malformed. Request a new one below.',
@@ -26,6 +30,7 @@ export function SignInPanels({ mode, error }: { mode: 'login' | 'signup'; error?
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(error ? ERRORS[error] : undefined);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const signup = mode === 'signup';
 
@@ -33,12 +38,23 @@ export function SignInPanels({ mode, error }: { mode: 'login' | 'signup'; error?
     e.preventDefault();
     setBusy(true);
     setFailure(undefined);
+    // On /signup the profile fields ride along; the server validates them
+    // before any link is sent and keeps them until the link is followed.
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const profile = signup ? Object.fromEntries(SIGNUP_FIELDS.map((f) => [f, form.get(f) ?? ''])) : {};
     try {
-      await fetch('/v1/auth/magic', {
+      const res = await fetch('/v1/auth/magic', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(signup ? { email, signup: true, ...profile } : { email }),
       });
+      if (res.status === 400) {
+        const data = (await res.json().catch(() => ({}))) as { errors?: Record<string, string> };
+        setFieldErrors(data.errors ?? {});
+        setFailure(data.errors?.email ?? 'A few of those fields need another look.');
+        return;
+      }
+      setFieldErrors({});
       // Always the same outcome, whether or not the address has an account.
       setSent(true);
     } catch {
@@ -112,6 +128,7 @@ export function SignInPanels({ mode, error }: { mode: 'login' | 'signup'; error?
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          {signup ? <ProfileFields fields={SIGNUP_FIELDS} errors={fieldErrors} idPrefix="signup-" /> : null}
           <button className={styles.submit} type="submit" disabled={busy || !email}>
             {busy ? 'Sending…' : signup ? 'Send my sign-in link' : 'Email me a link'}
           </button>

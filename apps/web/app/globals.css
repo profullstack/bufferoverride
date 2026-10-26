@@ -80,3 +80,28 @@ pre {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* The signup profile from @profullstack/profile (/signup, /account): the same
+   label and input look as the email box in _components/auth.module.css. */
+.pfs-profile { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.pfs-profile__row { display: flex; flex-direction: column; gap: 7px; }
+.pfs-profile__row label { font-size: 13px; font-weight: 500; color: var(--text-body); }
+.pfs-profile__optional { font-weight: 400; color: var(--text-muted); }
+.pfs-profile input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+}
+.pfs-profile input::placeholder { color: var(--text-muted); }
+.pfs-profile input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 26%, transparent);
+  outline-offset: 0;
+  border-color: var(--focus-ring);
+}
+.pfs-profile input[aria-invalid='true'] { border-color: var(--status-danger); }
+.pfs-profile__error { margin: 0; font-size: 12.5px; color: var(--status-danger); }
