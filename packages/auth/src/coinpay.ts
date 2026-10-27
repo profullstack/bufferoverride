@@ -180,12 +180,18 @@ export async function completeAuthorization(
     return { actor, created: false };
   }
 
+  // The new actor gets NO email. CoinPay never verifies the address it
+  // reports (email_verified is always false), so putting it on the actor would
+  // let anyone pre-claim somebody's address: their later magic-link sign-in
+  // would land in the account the CoinPay user made, and notifications would
+  // mail a stranger. The CoinPay-reported address stays on the identity row
+  // only, for display.
   const actor = currentActorId
     ? await actorById(currentActorId)
     : await createActorForIdentity(
         info.preferred_username ?? '',
         info.name ?? info.preferred_username ?? 'Contributor',
-        info.email ?? null,
+        null,
       );
   if (!actor) throw new Error('actor missing');
 
