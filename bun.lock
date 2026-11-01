@@ -15,7 +15,7 @@
         "@bufferoverride/notifications": "workspace:*",
         "@bufferoverride/reputation": "workspace:*",
         "@hono/node-server": "^2.1.5",
-        "@profullstack/profile": "0.1.6",
+        "@profullstack/profile": "0.1.7",
         "hono": "^4.13.14",
       },
     },
@@ -52,7 +52,7 @@
         "@bufferoverride/reputation": "workspace:*",
         "@bufferoverride/ui": "workspace:*",
         "@profullstack/footer": "latest",
-        "@profullstack/profile": "0.1.6",
+        "@profullstack/profile": "0.1.7",
         "@profullstack/x402-gateway": "^0.13.1",
         "@simplewebauthn/browser": "^14.0.0",
         "next": "16.4.3",
@@ -79,7 +79,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@bufferoverride/db": "workspace:*",
-        "@profullstack/profile": "0.1.6",
+        "@profullstack/profile": "0.1.7",
         "@simplewebauthn/server": "^14.0.3",
       },
     },
@@ -306,7 +306,9 @@
 
     "@profullstack/libsql-pg": ["@profullstack/libsql-pg@0.1.4", "", { "dependencies": { "@profullstack/libsql-pg": "^0.1.1", "pg": "^8.13.0" }, "optionalDependencies": { "@libsql/client": "^0.15.0" }, "bin": { "libsql-pg": "bin/libsql-pg.js" } }, "sha512-FB+rGGmM9Ua5ZqcrZQvjhagjDDIXZRj9mTC2wLsluD4MTk7/XcjHbOsHb6uMh5gEzhmH2yZz/yGpKCsMyVLujw=="],
 
-    "@profullstack/profile": ["@profullstack/profile@0.1.6", "", { "peerDependencies": { "@libsql/client": ">=0.6.0", "postgres": "^3.4.0", "react": ">=18" }, "optionalPeers": ["@libsql/client", "postgres", "react"], "bin": { "profile": "src/cli.js" } }, "sha512-xkn0P3ANz151QJdlBwcBXkHk813qW9qAmuTZKcuvpEZYkyHDC9J9KfvpVSRepfjECzz4ONGHWO5Zwc4BHpfK8g=="],
+    "@profullstack/openprofile": ["@profullstack/openprofile@0.2.0", "", {}, "sha512-cdFsBbfRXurvy5KqHDNcKXxurK2s/YlfVgnILFRpVl2hq3860rExqDee8IfsFGxw5cPdqGv2fxUxtek1Xy2U5Q=="],
+
+    "@profullstack/profile": ["@profullstack/profile@0.1.7", "", { "dependencies": { "@profullstack/openprofile": "^0.2.0" }, "peerDependencies": { "@libsql/client": ">=0.6.0", "postgres": "^3.4.0", "react": ">=18" }, "optionalPeers": ["@libsql/client", "postgres", "react"], "bin": { "profile": "src/cli.js" } }, "sha512-N7UkypkkY2JkSBKzmdmyy6+DCoxI048qUZQksEjSRwSIyy4mjU9H1qW4yhZD+LJBhTEupgJv//Uxwhiy2FuGmA=="],
 
     "@profullstack/x402-gateway": ["@profullstack/x402-gateway@0.13.1", "", { "dependencies": { "@profullstack/keys": "^0.1.0" } }, "sha512-V7liSO0tShZRlp8dancuDuUSF/rqrr5YF3bzLoZy9wn6ixf1RIRPYTepe72s36JOdSVzi3wfuhaZFm9y0RpV4w=="],
 

@@ -2,7 +2,9 @@ import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { db, env } from '@bufferoverride/db';
 import { canonicalOrigin } from './origin.ts';
 import { actorById, createActorForIdentity, type Actor } from './actors.ts';
+import { profileStore } from './profile.ts';
 import { safeEqual } from './tokens.ts';
+import { saveOpenProfileContact } from '@profullstack/profile';
 
 const ISSUER = 'https://coinpayportal.com';
 export const COINPAY_STATE_COOKIE = 'bo_cp_state';
@@ -109,7 +111,17 @@ type UserInfo = {
   email_verified?: boolean;
   name?: string;
   preferred_username?: string;
+  openprofile_url?: string;
 };
+
+async function importOpenProfile(actorId: string, url?: string): Promise<void> {
+  if (!url) return;
+  try {
+    await saveOpenProfileContact(profileStore(), actorId, url);
+  } catch (error) {
+    console.warn('[auth] CoinPay OpenProfile import failed:', error instanceof Error ? error.message : error);
+  }
+}
 
 async function exchangeCode(
   code: string,
@@ -177,6 +189,7 @@ export async function completeAuthorization(
     });
     const actor = await actorById(linkedActorId);
     if (!actor) throw new Error('linked actor missing');
+    await importOpenProfile(actor.id, info.openprofile_url);
     return { actor, created: false };
   }
 
@@ -217,6 +230,8 @@ export async function completeAuthorization(
     ],
     'write',
   );
+
+  await importOpenProfile(actor.id, info.openprofile_url);
 
   return { actor, created: !currentActorId };
 }
