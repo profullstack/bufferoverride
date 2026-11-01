@@ -10,7 +10,7 @@
   "dependencies": {
     "@bufferoverride/db": "workspace:*",
     "@hono/node-server": "^2.1.5",
-    "@profullstack/profile": "0.1.6",
+    "@profullstack/profile": "0.1.7",
     "hono": "^4.13.14",
     "@bufferoverride/auth": "workspace:*",
     "@bufferoverride/core": "workspace:*",

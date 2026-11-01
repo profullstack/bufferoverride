@@ -51,7 +51,7 @@ export function ProfileForm({ initial }: { initial: Values }) {
       {message ? <div className={styles.ok}>{message}</div> : null}
       {failure ? <div className={styles.err}>{failure}</div> : null}
       {/* Keyed on the saved values so a save shows what the server normalized. */}
-      <ProfileFields key={JSON.stringify(values)} defaultValues={values} errors={errors} idPrefix="account-" />
+      <ProfileFields key={JSON.stringify(values)} defaultValues={values} errors={errors} idPrefix="account-"  importOpenProfile/>
       <button type="submit" className={styles.submit} disabled={busy}>
         {busy ? 'Saving…' : 'Save details'}
       </button>
