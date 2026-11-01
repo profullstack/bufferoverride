@@ -15,7 +15,7 @@
         "@bufferoverride/notifications": "workspace:*",
         "@bufferoverride/reputation": "workspace:*",
         "@hono/node-server": "^2.1.5",
-        "@profullstack/profile": "0.1.7",
+        "@profullstack/profile": "0.1.8",
         "hono": "^4.13.14",
       },
     },
@@ -52,7 +52,7 @@
         "@bufferoverride/reputation": "workspace:*",
         "@bufferoverride/ui": "workspace:*",
         "@profullstack/footer": "latest",
-        "@profullstack/profile": "0.1.7",
+        "@profullstack/profile": "0.1.8",
         "@profullstack/x402-gateway": "^0.13.1",
         "@simplewebauthn/browser": "^14.0.0",
         "next": "16.4.3",
@@ -79,7 +79,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@bufferoverride/db": "workspace:*",
-        "@profullstack/profile": "0.1.7",
+        "@profullstack/profile": "0.1.8",
         "@simplewebauthn/server": "^14.0.3",
       },
     },
@@ -308,7 +308,7 @@
 
     "@profullstack/openprofile": ["@profullstack/openprofile@0.2.0", "", {}, "sha512-cdFsBbfRXurvy5KqHDNcKXxurK2s/YlfVgnILFRpVl2hq3860rExqDee8IfsFGxw5cPdqGv2fxUxtek1Xy2U5Q=="],
 
-    "@profullstack/profile": ["@profullstack/profile@0.1.7", "", { "dependencies": { "@profullstack/openprofile": "^0.2.0" }, "peerDependencies": { "@libsql/client": ">=0.6.0", "postgres": "^3.4.0", "react": ">=18" }, "optionalPeers": ["@libsql/client", "postgres", "react"], "bin": { "profile": "src/cli.js" } }, "sha512-N7UkypkkY2JkSBKzmdmyy6+DCoxI048qUZQksEjSRwSIyy4mjU9H1qW4yhZD+LJBhTEupgJv//Uxwhiy2FuGmA=="],
+    "@profullstack/profile": ["@profullstack/profile@0.1.8", "", { "dependencies": { "@profullstack/openprofile": "^0.2.0" }, "peerDependencies": { "@libsql/client": ">=0.6.0", "postgres": "^3.4.0", "react": ">=18" }, "optionalPeers": ["@libsql/client", "postgres", "react"], "bin": { "profile": "src/cli.js" } }, "sha512-MQ/AGGM++NZEbjMglRlEvjCrmsL46CXDz2GKb510eMBEKUik1cwix9ag20gakYrrVCaB5mNcNCMYon53vwDTfw=="],
 
     "@profullstack/x402-gateway": ["@profullstack/x402-gateway@0.13.1", "", { "dependencies": { "@profullstack/keys": "^0.1.0" } }, "sha512-V7liSO0tShZRlp8dancuDuUSF/rqrr5YF3bzLoZy9wn6ixf1RIRPYTepe72s36JOdSVzi3wfuhaZFm9y0RpV4w=="],
 
