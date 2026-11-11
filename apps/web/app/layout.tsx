@@ -112,6 +112,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               { label: 'CLI', href: '/docs/cli' },
               { label: 'Feed', href: '/feed.xml' },
               { label: 'Code', href: 'https://github.com/profullstack/bufferoverride' },
+              { label: 'Privacy', href: '/privacy' },
+              { label: 'Terms', href: '/terms' },
             ]}
           />
         </div>

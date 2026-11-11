@@ -15,8 +15,8 @@ const AD_NETWORK = 'tOBZMpdTr-2jI6f9';
 const AD_FORMAT = 'text_link';
 const AD_SCRIPT_SRC = 'https://crawlproof.com/ad.js';
 
-/** Sign-in, account and moderation flows never carry an ad. */
-const NO_AD_PREFIXES = ['/login', '/signup', '/account', '/moderation', '/notifications', '/ask'];
+/** Sign-in, account, moderation and legal pages never carry an ad. */
+const NO_AD_PREFIXES = ['/login', '/signup', '/account', '/moderation', '/notifications', '/ask', '/privacy', '/terms'];
 
 declare global {
   interface Window {
