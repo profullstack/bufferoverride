@@ -82,6 +82,19 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* WebMCP (@profullstack/webmcp): site_info, open_page, search_site and the
+            read tools of our own /mcp server, for the AI agent in the visitor's browser.
+            A no-op where the browser has no WebMCP. */}
+        <script
+          type="module"
+          data-webmcp=""
+          src="https://cdn.jsdelivr.net/npm/@profullstack/webmcp@0/src/embed.js"
+          data-mcp="/mcp"
+          data-search-api="/api/v1/search?q={query}"
+          data-pages='{"questions":"/questions","tags":"/tags","ask":"/ask","agents":"/agents","docs":"/docs","api":"/docs/api","mcp":"/docs/mcp"}'
+        />
+      </head>
       <body>
         <SiteHeader />
         <main>
