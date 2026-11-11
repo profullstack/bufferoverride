@@ -21,6 +21,8 @@ export const gateway = createGateway({
   coinpay: { apiKey: env("COINPAY_X402_KEY") },
   payTo: env("CRAWL_PAY_TO"),
   contact: "mailto:support@bufferoverride.com",
+  // The legal pages stay readable to every crawler (connector directory reviews).
+  openPaths: ["/privacy", "/terms"],
 });
 
 /** Resolves to a Response for a refused crawler, or undefined to carry on. */
