@@ -52,11 +52,15 @@ jobs:
             sleep 1
           done
           set -e
-          for path in /health / /questions /tags /docs /login /v1/tags /v1/questions /sitemap.xml /feed.xml /media/health; do
+          for path in /health / /questions /tags /docs /login /privacy /terms /v1/tags /v1/questions /sitemap.xml /feed.xml /media/health; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000$path")
             echo "$path $code"
             test "$code" = 200
           done
+          curl -s http://127.0.0.1:3000/privacy | grep -q '>Privacy Policy</h1>'
+          curl -s http://127.0.0.1:3000/terms | grep -q '>Terms of Service</h1>'
+          curl -s http://127.0.0.1:3000/ | grep -q 'href="/privacy"'
+          curl -s http://127.0.0.1:3000/ | grep -q 'href="/terms"'
           curl -s -X POST -H 'content-type: application/json' \
             -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' http://127.0.0.1:3000/mcp | grep -q search_questions
           cat gateway.log
