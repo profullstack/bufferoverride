@@ -33,6 +33,10 @@ describe('legal pages', () => {
     assert.match(layout, /href: '\/terms'/);
   });
 
+  it('the crawl gateway leaves the legal pages open', () => {
+    assert.match(read('../lib/crawl-gateway.ts'), /openPaths: \["\/privacy", "\/terms"\]/);
+  });
+
   it('legal pages carry no ad', () => {
     const ad = read('../app/_components/ad-unit.tsx');
     assert.match(ad, /'\/privacy', '\/terms'\]/);
