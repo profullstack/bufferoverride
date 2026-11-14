@@ -53,7 +53,7 @@
         "@bufferoverride/ui": "workspace:*",
         "@profullstack/footer": "latest",
         "@profullstack/profile": "0.1.8",
-        "@profullstack/x402-gateway": "^0.13.1",
+        "@profullstack/x402-gateway": "^0.18.0",
         "@simplewebauthn/browser": "^14.0.0",
         "next": "16.4.3",
         "react": "^19.3.1",
@@ -310,7 +310,7 @@
 
     "@profullstack/profile": ["@profullstack/profile@0.1.8", "", { "dependencies": { "@profullstack/openprofile": "^0.2.0" }, "peerDependencies": { "@libsql/client": ">=0.6.0", "postgres": "^3.4.0", "react": ">=18" }, "optionalPeers": ["@libsql/client", "postgres", "react"], "bin": { "profile": "src/cli.js" } }, "sha512-MQ/AGGM++NZEbjMglRlEvjCrmsL46CXDz2GKb510eMBEKUik1cwix9ag20gakYrrVCaB5mNcNCMYon53vwDTfw=="],
 
-    "@profullstack/x402-gateway": ["@profullstack/x402-gateway@0.13.1", "", { "dependencies": { "@profullstack/keys": "^0.1.0" } }, "sha512-V7liSO0tShZRlp8dancuDuUSF/rqrr5YF3bzLoZy9wn6ixf1RIRPYTepe72s36JOdSVzi3wfuhaZFm9y0RpV4w=="],
+    "@profullstack/x402-gateway": ["@profullstack/x402-gateway@0.18.0", "", { "dependencies": { "@profullstack/keys": "^0.1.0" } }, "sha512-+vORJd17QpLycouk0wrmyOlnyv+6Q9Ttxk+iglsMH2pZpejTUD2Ak3ysKxQsb94R4m1GLSEv8DHoCS49Nf4/0A=="],
 
     "@simplewebauthn/browser": ["@simplewebauthn/browser@14.0.0", "", {}, "sha512-1odWVqeEBTl7lJ9zMKLEsmTlnyrDO5iRcTvfMKKk1WThUnp/i8JJdffdj2icP+tty159s4PgwE3BiMoEW9NFow=="],
 
