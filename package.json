@@ -9,7 +9,7 @@
     "dev": "bun apps/gateway/src/index.ts",
     "migrate": "node --env-file-if-exists=.env packages/db/src/migrate.js",
     "test": "bun test",
-    "typecheck": "cd apps/web && tsc --noEmit"
+    "typecheck": "cd apps/web && bunx tsc --noEmit"
   },
   "workspaces": [
     "apps/*",
