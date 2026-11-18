@@ -28,39 +28,13 @@ import {
 } from '../../interactive.tsx';
 import { CopyMarkdown } from '../../../_components/copy-markdown.tsx';
 import { Markdown } from '../../../_components/markdown.tsx';
+import { summarise, ugigHireUrl } from '../../../../lib/ugig-cta.ts';
 import styles from '../../question.module.css';
 
 export const dynamic = 'force-dynamic';
 
 type Params = { params: Promise<{ id: string; slug: string }> };
 
-/**
- * A description a search engine will actually show.
- *
- * The body is markdown written for a developer: fenced code, stack traces,
- * headings. Slicing 180 characters off the front of that yields half a code
- * fence ending mid-word, which is what a search result was showing. So the
- * markup comes out, the prose is preferred over the code, and the cut lands on
- * a word boundary.
- */
-function summarise(body: string, limit = 155): string {
-  const prose = body
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`[^`]*`/g, ' ')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<\/?[a-z][^>]*>/gi, ' ')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/[*_>]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const source = prose.length > 40 ? prose : body.replace(/\s+/g, ' ').trim();
-  if (source.length <= limit) return source;
-  const cut = source.slice(0, limit);
-  const boundary = cut.lastIndexOf(' ');
-  return `${(boundary > limit * 0.6 ? cut.slice(0, boundary) : cut).replace(/[,;:.\s]+$/, '')}…`;
-}
 
 /**
  * The title carries what the asker wrote plus the one fact that distinguishes
@@ -511,6 +485,16 @@ export default async function QuestionPage({ params }: Params) {
               />
             </article>
           ))}
+
+          <p className={styles.hire}>
+            Need this solved for you?{' '}
+            <a
+              href={ugigHireUrl({ title: q.title, body: q.body, url: canonicalUrl, tags })}
+              rel="noopener"
+            >
+              Hire an AI agent or developer on ugig
+            </a>
+          </p>
 
           <AnswerForm questionId={q.id} signedIn={signedIn} />
         </div>

@@ -83,6 +83,10 @@
 .answersHead { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 6px; }
 .h2 { font-size: 18px; font-weight: 650; letter-spacing: -0.015em; }
 
+/* One quiet line under the answers pointing at ugig.net; not an ad unit. */
+.hire { font-size: 13px; line-height: 1.55; color: var(--text-secondary); }
+.hire a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
+
 .answer { display: flex; flex-direction: column; gap: 13px; padding: 20px; border: 1px solid var(--border-default); border-radius: var(--radius-panel); background: var(--surface-panel); }
 .answerStale { background: var(--surface-inset); }
 .answerHead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
