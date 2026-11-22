@@ -6,6 +6,9 @@ import { profileStore } from './profile.ts';
 import { safeEqual } from './tokens.ts';
 import { saveOpenProfileContact } from '@profullstack/profile';
 
+/** Who CoinPay sees calling: every fleet app shares one host and one IP. */
+const COINPAY_UA = `bufferoverride.com${process.env.npm_package_version ? `/${process.env.npm_package_version}` : ''} (+https://bufferoverride.com)`;
+
 const ISSUER = 'https://coinpayportal.com';
 export const COINPAY_STATE_COOKIE = 'bo_cp_state';
 
@@ -138,7 +141,7 @@ async function exchangeCode(
   });
   const res = await fetch(`${ISSUER}/api/oauth/token`, {
     method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': COINPAY_UA },
     body,
   });
   if (!res.ok) throw new Error(`coinpay token exchange failed: ${res.status} ${await res.text()}`);
@@ -147,7 +150,7 @@ async function exchangeCode(
 
 async function fetchUserInfo(accessToken: string): Promise<UserInfo> {
   const res = await fetch(`${ISSUER}/api/oauth/userinfo`, {
-    headers: { authorization: `Bearer ${accessToken}` },
+    headers: { authorization: `Bearer ${accessToken}`, 'user-agent': COINPAY_UA },
   });
   if (!res.ok) throw new Error(`coinpay userinfo failed: ${res.status}`);
   return (await res.json()) as UserInfo;
